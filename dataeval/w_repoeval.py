@@ -61,7 +61,7 @@ def _save_dataset(tokenizer, language, max_seq_len, max_gen_len, sft=False, inst
                 input_code=sample['input_code']
             )
             dataset["prompt"].append(prompt)
-            dataset["task_id"].append(sample["metadata"]["task_id"] + f"_{idx}")
+            dataset["task_id"].append(sample["metadata"]["task_id"])
             dataset["original_prompt"].append(sample["prompt"])
             dataset["canonical_solution"].append(sample["metadata"]["ground_truth"])
             dataset["stopwords"].append(STOP_WORDS)
@@ -76,7 +76,7 @@ def _save_dataset(tokenizer, language, max_seq_len, max_gen_len, sft=False, inst
                 context_above = tokenizer.decode(context_above_ids)
             prompt = context_above + "\n" + sample['input_code']
             dataset["prompt"].append(prompt)
-            dataset["task_id"].append(sample["metadata"]["task_id"] + f"_{idx}")
+            dataset["task_id"].append(sample["metadata"]["task_id"])
             dataset["original_prompt"].append(sample["prompt"])
             dataset["canonical_solution"].append(sample["metadata"]["ground_truth"])
             dataset["stopwords"].append(STOP_WORDS)

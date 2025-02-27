@@ -1,7 +1,7 @@
 from datasets import load_dataset
 import pandas as pd
 import datasets
-from tree_sitter import Language, Parser
+# from tree_sitter import Language, Parser
 from datasets import Dataset
 import os
 import textwrap

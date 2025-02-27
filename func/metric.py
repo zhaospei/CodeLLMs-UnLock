@@ -5,10 +5,19 @@ from sklearn.covariance import MinCovDet
 from rouge_score import rouge_scorer
 from sentence_transformers import util
 import heapq
+import textwrap
 # from selfcheckgpt.modeling_selfcheck import SelfCheckBERTScore
 
 ###### 导入ROUGE评估函数计算ROUGE-L指标
 rougeEvaluator = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeL"], use_stemmer=True)
+
+def count_indent(code):
+    if type(code) == str: # a single statement
+        return len(code) - len(textwrap.dedent(code))
+    elif type(code) == list: # a list of statements, i.e., a function body
+        for line in code:
+            if line.strip() != '':
+                return len(line) - len(textwrap.dedent(line))
 
 def getGenerationRange(generated_ids, tokenizer, passed_first_token=False):
     if passed_first_token:
@@ -33,6 +42,7 @@ def getCleanGenerationRange(tokenized_generated_text, clean_text, tokenizer):
     # print(len(tokenized_clean_text))
     # print(clean_text)
     clean_text = clean_text.strip()
+    # print(repr(clean_text))
     start_ind, end_ind = None, None
     # print(len(tokenized_generated_text))
     for i in range(len(tokenized_generated_text) - len(tokenized_clean_text) + min(len(tokenized_clean_text) // 2, 50)):
@@ -79,6 +89,124 @@ def getCleanGenerationRange(tokenized_generated_text, clean_text, tokenizer):
     
     return start_ind, end_ind
 
+def find_function_body(code, function_name, parser):
+    # if type(code) == str:
+    #     code = bytes(code, "utf8")
+    tree = parser.parse(bytes(code, "utf8"))
+    root_node = tree.root_node
+
+    def search_function(node):
+        # 查找类型为function_definition且名称匹配的节点
+        for child in node.children:
+            if child.type == 'function_definition':
+                # 获取函数名
+                name_node = child.child_by_field_name('name')
+                if name_node and name_node.text.decode('utf8') == function_name:
+                    # 找到函数，返回其body部分
+                    body_node = child.child_by_field_name('body')
+                    return body_node
+            # 递归搜索所有子节点
+            result = search_function(child)
+            if result:
+                return result
+        return None
+
+    # def search_import(node):
+    #     """
+    #     Search all import or from_import nodes from a root node.
+    #     """
+    #     import_nodes = []
+    #     for child in node.children:
+    #         if child.type == 'import_statement' or child.type == 'import_from_statement':
+    #             import_nodes.append(child)
+    #         result = search_import(child)
+    #         if result:
+    #             import_nodes.extend(result)
+    #     return import_nodes
+
+    function_body = search_function(root_node)
+    # import_nodes = search_import(root_node)
+    if function_body:
+        if len(function_body.children) == 0: # empty body
+            return None
+        first_node = function_body.children[0]
+        if first_node.type == 'expression_statement' and first_node.children[0].type == 'string':
+            start_idx = first_node.end_point[0] + 1
+        else:
+            start_idx = function_body.start_point[0]
+        end_idx = function_body.end_point[0] + 1
+
+        code_lines = code.split("\n")
+        body_code = code_lines[start_idx:end_idx]
+        if len(body_code) == 0: # empty body
+            return None
+        # if len(import_nodes) > 0:
+        #     body_indent = count_indent(body_code)
+        #     for node in import_nodes:
+        #         _import = ' '*body_indent + '\n'.join(code_lines[node.start_point[0]:(node.end_point[0] + 1)])
+        #         body_code = [_import] + body_code
+        #         # print(_import)
+        body_code = "\n".join(body_code)
+        return body_code
+        # return start_idx, end_idx
+    else: # no function found
+        return None
+
+def getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, function_name):
+    if not f'def {function_name}(' in clean_text:
+        completion_lines = clean_text.strip('\n').split("\n")
+        body_indent = count_indent(completion_lines[0])
+        new_complation = []
+        for line in completion_lines:
+            if count_indent(line) >= body_indent or line.strip() == "":
+                new_complation.append(line)
+            else:
+                break
+        new_complation = "\n".join(new_complation)
+        return getCleanGenerationRange(tokenized_generated_text, new_complation, tokenizer)
+    else:
+        func_body_clean_text = find_function_body(clean_text, function_name, parser)
+        if func_body_clean_text is None:
+            return getCleanGenerationRange(tokenized_generated_text, clean_text, tokenizer)
+        return getCleanGenerationRange(tokenized_generated_text, func_body_clean_text, tokenizer)
+
+def getLineGenerationTokens(tokenized_generated_text, clean_text, tokenizer, parser, function_name):
+    if function_name is None:
+        start_ind, end_ind = getCleanGenerationRange(tokenized_generated_text, clean_text, tokenizer)
+    else:
+        start_ind, end_ind = getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, function_name)
+    if start_ind is None or end_ind is None:
+        print(f"Cant extract function body token range in {function_name}")
+        start_ind = 0
+        end_ind = len(tokenized_generated_text)
+    last_line_tokens = []
+    fl_token = start_ind
+    for i in range(start_ind, end_ind):
+        if '\n' in tokenizer.decode(tokenized_generated_text[i:i+1]):
+            decoded_line = tokenizer.decode(tokenized_generated_text[fl_token:i]).strip()
+            if decoded_line != "" and not decoded_line.startswith('#'):
+                last_line_tokens.append(i)
+            fl_token = i
+    if end_ind > 0 and (end_ind - 1) not in last_line_tokens:
+        last_line_tokens.append(end_ind - 1)
+    return last_line_tokens
+
+def get_function_name(question: str, lang: str):
+    func_lines = [x for x in question.strip().split('\n') if x.strip()]
+
+    if lang.lower() == 'python':
+        try:
+            func_idx = [i for i in range(len(func_lines)) if func_lines[i].startswith("def ")][-1]
+            func_name = func_lines[func_idx].split('(')[0].strip()
+            # func_prefix = "\n".join(func_lines[:func_idx])
+            func_name = func_name[4:].strip()
+            return func_name
+        except:
+            return None
+    
+    func_name = func_lines[-1].split('{')[0].strip()
+    func_prefix = "\n".join(func_lines[:-1])
+    return func_name
 
 ### 根据GT答案及生成回答计算回答的Rouge Score
 def getRouge(rouge, generations, answers):

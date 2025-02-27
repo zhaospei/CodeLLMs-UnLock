@@ -1,7 +1,6 @@
 from datasets import load_dataset
 import pandas as pd
 import datasets
-from tree_sitter import Language, Parser
 from datasets import Dataset
 import os
 import textwrap
@@ -117,12 +116,14 @@ def extract_code_from_response(completion: str):
     code_lines = completion.split("\n")
     code_sol, code_eol = None, None
     for i, line in enumerate(completion_lines):
-        if line.startswith("```"):
+        if line.strip().startswith("```"):
+            # print(code_sol, i)
             if code_sol is None:
                 code_sol = i+1
             else:
                 code_eol = i
                 break
+    # print(code_sol)
     if code_sol is None: # No markdown code block
         if code_eol is None:
             code_sol = 0
@@ -132,6 +133,7 @@ def extract_code_from_response(completion: str):
     elif code_eol is None: # No end of markdown block
         code_eol = len(completion_lines)
     code_lines = completion_lines[code_sol:code_eol]
+    # print(code_sol, code_eol)
     code = "\n".join(code_lines)
     # if args.model_type == 'glm':
     #     code = code.replace('\\\"', '"')

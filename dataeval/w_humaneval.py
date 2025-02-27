@@ -176,6 +176,7 @@ def extract_generation_code(example, output, lang_code: str, verbose: bool=False
         # print(output)
         # code_block: str = re.findall(f'```{lang.lower()}\n(.*?)```', output, re.DOTALL | re.IGNORECASE)[0]
         code_block: str = re.findall(f'```(?:{lang.lower()})?\n(.*?)```', output, re.DOTALL | re.IGNORECASE)[0]
+        
         # print(code_block)
 
         # Remove main
