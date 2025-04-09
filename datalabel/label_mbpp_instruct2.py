@@ -74,6 +74,10 @@ from transformers import AutoTokenizer
 import json
 import os
 from benchmark.MBPP.human_eval.evaluation import evaluate_functional_correctness_and_get_coverage
+from .parse_coverage import get_coverage, get_fail_pass_each_testcase
+
+
+
 
 
 def main(args):
@@ -128,7 +132,7 @@ def main(args):
             tmpfile.flush()
             currentnum += 1
         
-        results = evaluate_functional_correctness_and_get_coverage(input_file=log_file, problem_file=os.path.join(data_root, f"mbpp_test.jsonl"), tmp_dir=log_dir, language=runlang, n_workers=24, is_mbpp=True)
+        results = evaluate_functional_correctness_and_get_coverage(input_file=log_file, problem_file=os.path.join(data_root, f"mbpp_test.jsonl"), tmp_dir=log_dir, language=runlang, n_workers=4, is_mbpp=True)
 
         results_exec.append(results)
         for line in batch_lines:
@@ -150,11 +154,34 @@ def main(args):
     
     os.system("coverage json --show-contexts -o mbpp_coverage.json")
     results = pd.DataFrame(sequences)
+    coverage_list = list()
+    source_list = list()
+    for _, row in results.iterrows():
+        coverage_file = f'tmp_dir/coverage/mbpp_coverage_{row["task_id"]}_{row["completion_id"]}.json'
+        source_file = f'tmp_dir/source/test_{row["task_id"]}_{row["completion_id"]}.py'
+        coverage_dict, source = get_coverage(coverage_file,source_file)
+        coverage_list.append(coverage_dict)
+        source_list.append(source)
+    results["coverage"] = coverage_list
+    results['source_coverage'] = source_list
     results["label"] = test_run_results
     results['memory'] = run_mem
     results["time"] = run_times
     results["run_log"] = run_log
     results["cleaned_code"] = cleaned_output_results
+
+    result_test = list()
+    test_faileds = list()
+    total_of_test = list()
+    for _,row in tqdm(results.iterrows()):
+        result, number_of_test, test_failed = get_fail_pass_each_testcase(row['run_log'])
+        result_test.append(result)
+        test_faileds.append(' '.join(test_failed))
+        total_of_test.append(number_of_test)
+    results['result_test'] = result_test
+    results['test_failed'] = test_faileds
+    results['total_of_test'] = total_of_test
+    
     results.to_parquet(continue_from.replace(".parquet", "_label.parquet"))
 
 

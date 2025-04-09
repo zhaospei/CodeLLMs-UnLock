@@ -173,7 +173,7 @@ def main(args):
         results = evaluate_functional_correctness_each_sample(input_file=log_file, \
             problem_file=os.path.join(data_root, f"humaneval-{language}.jsonl"), \
                 tmp_dir=log_dir, timeout=timeout, \
-                language=runlang, n_workers=8)
+                language=runlang, n_workers=4)
         for line in batch_lines:
             cleaned_output_results.append(line['generation'])
             test_run_results.append(results[line['completion_id']][0][1]['passed'])

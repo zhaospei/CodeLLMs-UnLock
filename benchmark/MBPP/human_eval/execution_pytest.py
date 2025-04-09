@@ -38,7 +38,8 @@ def pytest_check_correctness(
     Evaluates the functional correctness of a completion by running the test
     suite provided in the problem.
     """
-    source_dir = os.path.join('/drive2/thanhvt/lab/dev_wcodellm','tmp_dir',"source")
+    current_dir = os.getcwd()
+    source_dir = os.path.join(current_dir,'tmp_dir',"source")
     if not os.path.exists(source_dir):
         os.makedirs(source_dir, exist_ok=True)
     os.system("coverage erase")
@@ -69,14 +70,14 @@ def pytest_check_correctness(
                         with time_limit(timeout):
                             #change it run pytest
                             test_output = subprocess.run(
-                                ["coverage","run","-a","--rcfile","/drive2/thanhvt/lab/dev_wcodellm/.coveragerc", "-m", "pytest", file_source_dir],
+                                ["coverage","run","-a","--rcfile",f"{current_dir}/.coveragerc", "-m", "pytest", file_source_dir],
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
                                 timeout=timeout,
                                 text=True  # so output is string, not bytes
                             )
                             # exec(sample["test_code"], exec_globals)
-                        os.system(f"coverage json --show-contexts -o /drive2/thanhvt/lab/dev_wcodellm/tmp_dir/coverage/mbpp_coverage_{task_id}_{completion_id}.json")
+                        os.system(f"coverage json --show-contexts -o {current_dir}/tmp_dir/coverage/mbpp_coverage_{task_id}_{completion_id}.json")
                         if test_output.stdout:
                             result.append(f"failed: {test_output.stdout}")
                         else:

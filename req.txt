@@ -5,8 +5,7 @@ torchmetrics
 datasets
 accelerate
 rouge_score
-selfcheckgpt
-numpy<2.0
-bitsandbytes
 tree_sitter
 tqdm
+pytest
+coverage
