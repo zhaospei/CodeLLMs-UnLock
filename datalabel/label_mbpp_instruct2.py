@@ -73,17 +73,16 @@ from accelerate import DistributedDataParallelKwargs
 from transformers import AutoTokenizer
 import json
 import os
-from benchmark.MBPP.human_eval.evaluation import evaluate_functional_correctness_each_sample
+from benchmark.MBPP.human_eval.evaluation import evaluate_functional_correctness_and_get_coverage
 
 
 def main(args):
     data_root = args.data_root
     continue_from = args.file
-    kwargs_handlers = [DistributedDataParallelKwargs(find_unused_parameters=True)]
-    accelerator = Accelerator(mixed_precision="bf16", kwargs_handlers=kwargs_handlers)
     model_name = args.model_name
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     sequences = pd.read_parquet(continue_from).to_dict(orient="records")
+    #TODO: erase converage
+    #
     print(f"Loaded {len(sequences)} indices")
     batch_size = 24
     language = args.lang
@@ -114,11 +113,9 @@ def main(args):
         timeout = 10.0
         runlang = language
         for sequence in sequences[idx:idx + batch_size]:
-            # suffixprediction = tokenizer.decode(i, skip_special_tokens=True)
             suffixprediction = extract_generation_code(sequence['generation'])
             task_id = sequence['task_id']
             completion_id = sequence['completion_id']
-            # print(completion_id)
             res = {
                 "task_id": task_id, 
                 "generation": suffixprediction, 
@@ -131,7 +128,7 @@ def main(args):
             tmpfile.flush()
             currentnum += 1
         
-        results = evaluate_functional_correctness_each_sample(input_file=log_file, problem_file=os.path.join(data_root, f"mbpp_test.jsonl"), tmp_dir=log_dir, language=runlang, n_workers=24, is_mbpp=True)
+        results = evaluate_functional_correctness_and_get_coverage(input_file=log_file, problem_file=os.path.join(data_root, f"mbpp_test.jsonl"), tmp_dir=log_dir, language=runlang, n_workers=24, is_mbpp=True)
 
         results_exec.append(results)
         for line in batch_lines:
@@ -150,6 +147,8 @@ def main(args):
     with open(continue_from.replace(".parquet", ".json"), "w+") as f:
         json.dump(results_exec, f)
 
+    
+    os.system("coverage json --show-contexts -o mbpp_coverage.json")
     results = pd.DataFrame(sequences)
     results["label"] = test_run_results
     results['memory'] = run_mem
@@ -165,7 +164,7 @@ import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data_root", type=str, help="Batch size per GPU/CPU for training."
+        "--data_root", type=str
     )
     parser.add_argument("--file", type=str)
     parser.add_argument(

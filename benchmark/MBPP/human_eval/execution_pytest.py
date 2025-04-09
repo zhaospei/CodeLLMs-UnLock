@@ -24,7 +24,9 @@ php_exec = ""
 cs_exec = ""
 
 
-def check_correctness(
+import subprocess
+
+def pytest_check_correctness(
         task_id: str,
         sample: dict,
         language_type: str,
@@ -36,43 +38,49 @@ def check_correctness(
     Evaluates the functional correctness of a completion by running the test
     suite provided in the problem.
     """
-
+    source_dir = os.path.join('/drive2/thanhvt/lab/dev_wcodellm','tmp_dir',"source")
+    if not os.path.exists(source_dir):
+        os.makedirs(source_dir, exist_ok=True)
+    os.system("coverage erase")
     def unsafe_execute(tmp_dir):
         random_id = random.randint(1, 100000)
         if "python" in language_type.lower():
             with create_tempdir():
-
                 # These system calls are needed when cleaning up tempdir.
                 import os
                 import shutil
+                import subprocess
                 rmtree = shutil.rmtree
                 rmdir = os.rmdir
                 chdir = os.chdir
-
+                
                 tracemalloc.start()
                 start_time = time.time()
-                
+                file_source_dir = os.path.join(source_dir,f'test_{task_id}_{completion_id}.py')
+                with open(file_source_dir,'w') as fff:
+                    fff.write(sample["test_code"])
+
                 # Disable functionalities that can make destructive changes to the test.
-                reliability_guard()
-                # print('DEBUG')
-                # print('-'*33)
-                # print(sample["test_code"])
+                # reliability_guard()
+                
                 try:
                     exec_globals = {}
                     with swallow_io():
                         with time_limit(timeout):
-                            # WARNING
-                            # This program exists to execute untrusted model-generated code. Although
-                            # it is highly unlikely that model-generated code will do something overtly
-                            # malicious in response to this test suite, model-generated code may act
-                            # destructively due to a lack of model capability or alignment.
-                            # Users are strongly encouraged to sandbox this evaluation suite so that it
-                            # does not perform destructive actions on their host or network.
-                            # Once you have read this disclaimer and taken appropriate precautions,
-                            # uncomment the following line and proceed at your own risk:
-                            #TODO: process split file, source
-                            exec(sample["test_code"], exec_globals)
-                        result.append("passed")
+                            #change it run pytest
+                            test_output = subprocess.run(
+                                ["coverage","run","-a","--rcfile","/drive2/thanhvt/lab/dev_wcodellm/.coveragerc", "-m", "pytest", file_source_dir],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                timeout=timeout,
+                                text=True  # so output is string, not bytes
+                            )
+                            # exec(sample["test_code"], exec_globals)
+                        os.system(f"coverage json --show-contexts -o /drive2/thanhvt/lab/dev_wcodellm/tmp_dir/coverage/mbpp_coverage_{task_id}_{completion_id}.json")
+                        if test_output.stdout:
+                            result.append(f"failed: {test_output.stdout}")
+                        else:
+                            result.append(test_output.stdout)
                 except TimeoutException:
                     result.append("timed out")
                 except AssertionError as e:
@@ -120,6 +128,8 @@ def check_correctness(
             "passed": result[0] == "passed",
             "finish": -1 if "finish" not in sample else sample["finish"],
             "code": sample["test_code"],
+            "memory": -1,
+            "execution_time": -1,
         }
 
 # Copyright (c) OpenAI (https://openai.com)
@@ -273,8 +283,8 @@ def reliability_guard(maximum_memory_bytes: Optional[int] = None):
     shutil.move = None
     shutil.chown = None
 
-    import subprocess
-    subprocess.Popen = None  # type: ignore
+    # import subprocess
+    # subprocess.Popen = None  # type: ignore
 
     __builtins__['help'] = None
 

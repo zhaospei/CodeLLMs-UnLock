@@ -122,10 +122,7 @@ from benchmark.HumanEval.human_eval.evaluation import evaluate_functional_correc
 def main(args):
     data_root = args.data_root
     continue_from = args.file
-    kwargs_handlers = [DistributedDataParallelKwargs(find_unused_parameters=True)]
-    accelerator = Accelerator(mixed_precision="bf16", kwargs_handlers=kwargs_handlers)
     model_name = args.model_name
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     problem_file = os.path.join(data_root, f"humaneval-{args.lang}.jsonl")
     # sequences = pd.read_pickle(continue_from)
     sequences = pd.read_parquet(continue_from).to_dict(orient='records')
