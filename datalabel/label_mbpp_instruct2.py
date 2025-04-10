@@ -74,7 +74,7 @@ from transformers import AutoTokenizer
 import json
 import os
 from benchmark.MBPP.human_eval.evaluation import evaluate_functional_correctness_and_get_coverage
-from .parse_coverage import get_coverage, get_fail_pass_each_testcase
+from .parse_coverage import get_coverage, get_fail_pass_each_testcase, get_spectrum
 
 
 
@@ -85,8 +85,8 @@ def main(args):
     continue_from = args.file
     model_name = args.model_name
     sequences = pd.read_parquet(continue_from).to_dict(orient="records")
-    #TODO: erase converage
-    #
+    # sequences = sequences[:20]
+    working_dir = args.working_dir
     print(f"Loaded {len(sequences)} indices")
     batch_size = 24
     language = args.lang
@@ -111,8 +111,6 @@ def main(args):
         log_file = os.path.join(log_dir,
                                         f'{model_name.replace("/", "_")}_{idx}_shot_log_{language}.json')
         tmpfile = open(log_file, "w")
-        # with open(log_file, "r") as f:
-        #     batch_lines = [json.loads(line) for line in f.readlines()]
         batch_lines = []
         timeout = 10.0
         runlang = language
@@ -132,7 +130,7 @@ def main(args):
             tmpfile.flush()
             currentnum += 1
         
-        results = evaluate_functional_correctness_and_get_coverage(input_file=log_file, problem_file=os.path.join(data_root, f"mbpp_test.jsonl"), tmp_dir=log_dir, language=runlang, n_workers=4, is_mbpp=True)
+        results = evaluate_functional_correctness_and_get_coverage(input_file=log_file, problem_file=os.path.join(data_root, f"mbpp_test.jsonl"), tmp_dir=log_dir, language=runlang, n_workers=7, is_mbpp=True, working_dir=working_dir)
 
         results_exec.append(results)
         for line in batch_lines:
@@ -141,9 +139,6 @@ def main(args):
             run_times.append(results[line["completion_id"]][0][1]["execution_time"])
             run_mem.append(results[line["completion_id"]][0][1]["memory"])
             run_log.append(results[line["completion_id"]][0][1]["result"])  # result
-            if results[line["completion_id"]][0][1]["passed"]:
-                totalpass += 1
-        print(f"Total pass: {totalpass}, Current num: {currentnum}")
         tmpfile.close()
         for line in batch_lines:
             total_samples.append(line)
@@ -151,25 +146,25 @@ def main(args):
     with open(continue_from.replace(".parquet", ".json"), "w+") as f:
         json.dump(results_exec, f)
 
-    
-    os.system("coverage json --show-contexts -o mbpp_coverage.json")
     results = pd.DataFrame(sequences)
     coverage_list = list()
     source_list = list()
+    test_codes = list()
     for _, row in results.iterrows():
-        coverage_file = f'tmp_dir/coverage/mbpp_coverage_{row["task_id"]}_{row["completion_id"]}.json'
-        source_file = f'tmp_dir/source/test_{row["task_id"]}_{row["completion_id"]}.py'
-        coverage_dict, source = get_coverage(coverage_file,source_file)
+        coverage_file = f'tmp_dir/{working_dir}/coverage/file_coverage_{row["task_id"]}_{row["completion_id"]}.json'
+        source_file = f'tmp_dir/{working_dir}/source/test_{row["task_id"]}_{row["completion_id"]}.py'
+        coverage_dict, source,test_code = get_coverage(coverage_file,source_file)
         coverage_list.append(coverage_dict)
         source_list.append(source)
+        test_codes.append(test_code)
     results["coverage"] = coverage_list
     results['source_coverage'] = source_list
+    results['test_code'] = test_code
     results["label"] = test_run_results
     results['memory'] = run_mem
     results["time"] = run_times
     results["run_log"] = run_log
     results["cleaned_code"] = cleaned_output_results
-
     result_test = list()
     test_faileds = list()
     total_of_test = list()
@@ -181,12 +176,17 @@ def main(args):
     results['result_test'] = result_test
     results['test_failed'] = test_faileds
     results['total_of_test'] = total_of_test
+    spectrums = list()
     
+    for _,row in tqdm(results.iterrows()):
+        spes = get_spectrum(row)
+        spectrums.append(spes)
+    results['spectrum'] = spectrums
+    results = results[['task_id',	'completion_id',	'num_tokens',	'generation',	'coverage',	'source_coverage', 'run_log',	'cleaned_code'	,'result_test',	'test_failed'	,'total_of_test', 'spectrum','test_code']]
     results.to_parquet(continue_from.replace(".parquet", "_label.parquet"))
 
 
 import argparse
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -199,5 +199,6 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument("--lang", type=str)
+    parser.add_argument("--working_dir", type=str)#working_dir
     args = parser.parse_args()
     main(args)

@@ -371,6 +371,7 @@ def evaluate_functional_correctness_and_get_coverage(
         example_test: bool = False,
         is_mbpp: bool = False,
         language: str = "python",
+        working_dir = "codellama_mbpp"
 ):
     """
     Evaluates the functional correctness of a model.
@@ -402,7 +403,7 @@ def evaluate_functional_correctness_and_get_coverage(
                 sample["test_code"] = process_humaneval_test_with_pytest(sample, problems, example_test, language)
                 if sample["test_code"] is None:
                     continue
-                args = (task_id, sample, lang, timeout, tmp_dir_, completion_id[task_id])
+                args = (task_id, sample, lang, timeout, tmp_dir_, completion_id[task_id],working_dir)
                 future = executor.submit(pytest_check_correctness, *args)
                 futures.append(future)
                 completion_id[task_id] += 1
@@ -427,7 +428,7 @@ def evaluate_functional_correctness_and_get_coverage(
                     completion_id_ = sample["completion_id"]
                 else:
                     completion_id_ = completion_id[task_id]
-                args = (task_id, sample, lang, timeout, tmp_dir_, completion_id_)
+                args = (task_id, sample, lang, timeout, tmp_dir_, completion_id_,working_dir)
                 future = executor.submit(pytest_check_correctness, *args)
                 futures.append(future)
                 completion_id[task_id] += 1

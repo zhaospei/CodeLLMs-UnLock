@@ -13,6 +13,7 @@
 
 python -m datalabel.label_mbpp_instruct2 \
 --data_root benchmark/MBPP/data \
---file data/LFCLF_embedding_mbpp_deepseek-ai_deepseek-coder-6.7b-instruct_32.parquet \
---model_name deepseek-ai/deepseek-coder-6.7b-instruct \
---lang python
+--file data/LFCLF_embedding_mbpp_codellama_CodeLlama-7b-Instruct-hf_32_label.parquet  \
+--model_name codellama/CodeLlama-7b-Instruct-hf \
+--lang python \
+--working_dir codellama_mbpp
