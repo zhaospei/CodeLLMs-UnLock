@@ -266,8 +266,8 @@ def process_last_line():
             clean_generation_decoded = dataset_egc(example, gen, args.language)
             if function_name is None:
                 function_name = get_function_name(clean_generation_decoded, args.language)
-            last_line_token_ids = getLineGenerationTokens(generated_ids.tolist(), clean_generation_decoded, tokenizer, code_parser, function_name)
-            last_line_token_ids_list.append(last_line_token_ids)
+            last_line_token_ids, lines_ind = getLineGenerationTokens(generated_ids.tolist(), clean_generation_decoded, tokenizer, code_parser, function_name)
+            last_line_token_ids_list.append((last_line_token_ids, lines_ind))
 
         last_line_token_ids_list_all[task_id_path] = last_line_token_ids_list
     
@@ -307,12 +307,14 @@ def process_last_line():
                 completion_id = str(task_id) + '_' + str(j)
                 generation = task_generation_seqs["generations"][j]
                 generated_ids = task_generation_seqs["generations_ids"][j]
-                last_line_token_ids = last_line_token_ids_list[j]
+                last_line_token_ids, lines_ind = last_line_token_ids_list[j]
                 layer_embedding = task_embedding['layer_embeddings'][j]
                 last_line_token_embeddings = []
+                chosen_id_list = []
                 for id in last_line_token_ids:
                     # chosen_id = max(0, id - 1)
                     chosen_id = min(len(layer_embedding) - 1, id + 1)
+                    chosen_id_list.append(chosen_id)
                     last_line_token_embeddings.append(layer_embedding[chosen_id].tolist())
                 results = results._append({
                     "task_id": task_id, 
@@ -320,13 +322,15 @@ def process_last_line():
                     "generation": generation,
                     "generated_ids": generated_ids.tolist(),
                     "last_line_token_embeddings": last_line_token_embeddings,
-                    "last_line_token_ids": last_line_token_ids
+                    "last_line_token_ids": last_line_token_ids,
+                    "chosen_id_list": chosen_id_list,
+                    "lines_ind": lines_ind,
                 }, 
                 ignore_index=True)
         
         print(f'Found {found_sample} / {len(dataset)}')
         model_name = args.model_name.replace('/', '_')
-        results.to_parquet(os.path.join(output_dir, f'last_2_token_line_embedding_{args.dataset}_{model_name}_{layer}.parquet'))
+        results.to_parquet(os.path.join(output_dir, f'last_2_token_line_embedding_lines_ind_{args.dataset}_{model_name}_{layer}.parquet'))
     
     return
 

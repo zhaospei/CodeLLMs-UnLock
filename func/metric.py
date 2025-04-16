@@ -132,13 +132,14 @@ def find_function_body(code, function_name, parser):
                 name_node = child.child_by_field_name('name')
                 if name_node and name_node.text.decode('utf8') == function_name:
                     # 找到函数，返回其body部分
+                    function_start_point = child.start_point[0]
                     body_node = child.child_by_field_name('body')
-                    return body_node
+                    return body_node, function_start_point
             # 递归搜索所有子节点
             result = search_function(child)
-            if result:
+            if result[0] != None:
                 return result
-        return None
+        return None, None
 
     # def search_import(node):
     #     """
@@ -153,16 +154,16 @@ def find_function_body(code, function_name, parser):
     #             import_nodes.extend(result)
     #     return import_nodes
 
-    function_body = search_function(root_node)
+    function_body, function_start_point = search_function(root_node)
     # import_nodes = search_import(root_node)
     if function_body:
         if len(function_body.children) == 0: # empty body
             return None
         first_node = function_body.children[0]
-        if first_node.type == 'expression_statement' and first_node.children[0].type == 'string':
-            start_idx = first_node.end_point[0] + 1
-        else:
-            start_idx = function_body.start_point[0]
+        # if first_node.type == 'expression_statement' and first_node.children[0].type == 'string':
+        #     start_idx = first_node.end_point[0] + 1
+        # else:
+        start_idx = function_body.start_point[0]
         end_idx = function_body.end_point[0] + 1
 
         code_lines = code.split("\n")
@@ -176,10 +177,10 @@ def find_function_body(code, function_name, parser):
         #         body_code = [_import] + body_code
         #         # print(_import)
         body_code = "\n".join(body_code)
-        return body_code
+        return body_code, start_idx - function_start_point[0]
         # return start_idx, end_idx
     else: # no function found
-        return None
+        return None, None
 
 def getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, function_name):
     if not f'def {function_name}(' in clean_text:
@@ -194,31 +195,45 @@ def getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, functi
         new_complation = "\n".join(new_complation)
         return getCleanGenerationRange(tokenized_generated_text, new_complation, tokenizer)
     else:
-        func_body_clean_text = find_function_body(clean_text, function_name, parser)
+        func_body_clean_text, offset_function_signature = find_function_body(clean_text, function_name, parser)
         if func_body_clean_text is None:
-            return getCleanGenerationRange(tokenized_generated_text, clean_text, tokenizer)
-        return getCleanGenerationRange(tokenized_generated_text, func_body_clean_text, tokenizer)
+            return getCleanGenerationRange(tokenized_generated_text, clean_text, tokenizer), 0
+        return getCleanGenerationRange(tokenized_generated_text, func_body_clean_text, tokenizer), offset_function_signature
 
 def getLineGenerationTokens(tokenized_generated_text, clean_text, tokenizer, parser, function_name):
     if function_name is None:
         start_ind, end_ind = getCleanGenerationRange(tokenized_generated_text, clean_text, tokenizer)
+        offset_function_signature = 0
     else:
-        start_ind, end_ind = getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, function_name)
+        (start_ind, end_ind),  offset_function_signature = getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, function_name)
+    
     if start_ind is None or end_ind is None:
         print(f"Cant extract function body token range in {function_name}")
         start_ind = 0
         end_ind = len(tokenized_generated_text)
     last_line_tokens = []
     fl_token = start_ind
+    lines_ind = []
+    current_line = offset_function_signature
     for i in range(start_ind, end_ind):
         if '\n' in tokenizer.decode(tokenized_generated_text[i:i+1]):
-            decoded_line = tokenizer.decode(tokenized_generated_text[fl_token:i]).strip()
+            decoded_line = tokenizer.decode(tokenized_generated_text[fl_token:i + 1]).strip()
             if decoded_line != "" and not decoded_line.startswith('#'):
                 last_line_tokens.append(i)
-            fl_token = i
-    if end_ind > 0 and (end_ind - 1) not in last_line_tokens:
-        last_line_tokens.append(end_ind - 1)
-    return last_line_tokens
+                lines_ind.append(current_line)
+            fl_token = i + 1
+            current_line += 1
+    try:
+        if '\n' in tokenizer.decode(tokenized_generated_text[end_ind, end_ind + 1]):
+            decoded_line = tokenizer.decode(tokenized_generated_text[fl_token:end_ind + 1]).strip()
+            if decoded_line != "" and not decoded_line.startswith('#'):
+                last_line_tokens.append(end_ind)
+                lines_ind.append(current_line)
+    except:
+        pass
+    # if end_ind > 0 and (end_ind - 1) not in last_line_tokens:
+    #     last_line_tokens.append(end_ind - 1)
+    return last_line_tokens, lines_ind
 
 def get_function_name(question: str, lang: str):
     func_lines = [x for x in question.strip().split('\n') if x.strip()]
