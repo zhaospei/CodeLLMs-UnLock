@@ -760,7 +760,7 @@ def process_att_token():
                 task_id_path = f'tensor({task_id_path})'
             
             
-            task_embedding_path = f'all_token_embedding_{task_id_path}_{layer}.pkl'
+            task_embedding_path = f'all_att_chosen_token_embedding_{task_id_path}_{layer}.pkl'
             task_embedding_path = os.path.join(args.generate_dir, task_embedding_path)
             if not os.path.exists(task_embedding_path):
                 print(f'File {task_id_path} {layer} not found. Skipping...')
@@ -769,10 +769,11 @@ def process_att_token():
             with open(task_embedding_path, 'rb') as f:
                 task_embedding = pickle.load(f)
             
-            for j in range(len(task_embedding['generations'])):
+            for j in range(len(task_embedding['layer_embeddings'])):
                 task_id = example['task_id']
                 completion_id = str(task_id) + '_' + str(j)
                 layer_embedding = task_embedding['layer_embeddings'][j][0]
+                # print(layer_embedding)
                 
                 results = results._append({
                     "task_id": task_id, 
