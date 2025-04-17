@@ -137,9 +137,9 @@ def find_function_body(code, function_name, parser):
                     return body_node, function_start_point
             # 递归搜索所有子节点
             result = search_function(child)
-            if result[0] != None:
+            if result != None:
                 return result
-        return None, None
+        return None
 
     # def search_import(node):
     #     """
@@ -154,9 +154,11 @@ def find_function_body(code, function_name, parser):
     #             import_nodes.extend(result)
     #     return import_nodes
 
-    function_body, function_start_point = search_function(root_node)
+     
+    result = search_function(root_node)
     # import_nodes = search_import(root_node)
-    if function_body:
+    if result:
+        function_body, function_start_point = result
         if len(function_body.children) == 0: # empty body
             return None
         first_node = function_body.children[0]
@@ -177,10 +179,10 @@ def find_function_body(code, function_name, parser):
         #         body_code = [_import] + body_code
         #         # print(_import)
         body_code = "\n".join(body_code)
-        return body_code, start_idx - function_start_point[0]
+        return body_code, start_idx - function_start_point
         # return start_idx, end_idx
     else: # no function found
-        return None, None
+        return None
 
 def getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, function_name):
     if not f'def {function_name}(' in clean_text:
@@ -193,11 +195,12 @@ def getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, functi
             else:
                 break
         new_complation = "\n".join(new_complation)
-        return getCleanGenerationRange(tokenized_generated_text, new_complation, tokenizer)
+        return getCleanGenerationRange(tokenized_generated_text, new_complation, tokenizer), 0
     else:
-        func_body_clean_text, offset_function_signature = find_function_body(clean_text, function_name, parser)
-        if func_body_clean_text is None:
+        result = find_function_body(clean_text, function_name, parser)
+        if result is None:
             return getCleanGenerationRange(tokenized_generated_text, clean_text, tokenizer), 0
+        func_body_clean_text, offset_function_signature = result
         return getCleanGenerationRange(tokenized_generated_text, func_body_clean_text, tokenizer), offset_function_signature
 
 def getLineGenerationTokens(tokenized_generated_text, clean_text, tokenizer, parser, function_name):
@@ -206,7 +209,10 @@ def getLineGenerationTokens(tokenized_generated_text, clean_text, tokenizer, par
         offset_function_signature = 0
     else:
         (start_ind, end_ind),  offset_function_signature = getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, function_name)
-    
+        # result = getBodyRange(tokenized_generated_text, clean_text, tokenizer, parser, function_name)
+        # print(result)
+        # (start_ind, end_ind),  offset_function_signature = result
+
     if start_ind is None or end_ind is None:
         print(f"Cant extract function body token range in {function_name}")
         start_ind = 0
