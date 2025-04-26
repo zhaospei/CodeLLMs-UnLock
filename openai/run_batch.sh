@@ -1,0 +1,1 @@
+python openai/run_batch.py --input_dir openai/mini_batch --output_dir openai/mini_batch 
