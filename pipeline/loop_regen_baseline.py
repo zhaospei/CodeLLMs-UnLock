@@ -159,25 +159,26 @@ def main(args):
             else:
                 if row[f'predictions_{loop_id}'] == 0.0:
                     embedding = torch.tensor(row[f'last_token_code_embedding_{loop_id}']).float().to("cuda")
-                    with torch.no_grad():
-                        output = clf_model(embedding)
-                        pred = (output > 0.5).float().item()
-                        if pred == 0.0:
-                            output, last_code_token_last_layer_embedding = eval_prompt(row['task_id'], row['extracted_code'])
-                            print("Regenerated code for task_id:", row['task_id'])
-                            print("Generated code:", row['extracted_code'])
-                            print("Regen code:", output)
-                            predictions.append(pred)
-                            regen_codes.append(output)
-                            embeddings.append(last_code_token_last_layer_embedding)
-                        else:
-                            print("No need to regenerate for task_id:", row['task_id'])
-                            predictions.append(pred)
-                            regen_codes.append("")
-                            embeddings.append(None)
                 else:
                     print("No need to regenerate for task_id:", row['task_id'])
                     predictions.append(1.0)
+                    regen_codes.append("")
+                    embeddings.append(None)
+                    continue
+            with torch.no_grad():
+                output = clf_model(embedding)
+                pred = (output > 0.5).float().item()
+                if pred == 0.0:
+                    output, last_code_token_last_layer_embedding = eval_prompt(row['task_id'], row['extracted_code'])
+                    print("Regenerated code for task_id:", row['task_id'])
+                    print("Generated code:", row['extracted_code'])
+                    print("Regen code:", output)
+                    predictions.append(pred)
+                    regen_codes.append(output)
+                    embeddings.append(last_code_token_last_layer_embedding)
+                else:
+                    print("No need to regenerate for task_id:", row['task_id'])
+                    predictions.append(pred)
                     regen_codes.append("")
                     embeddings.append(None)
         df[f"predictions_{loop_id + 1}"] = predictions
