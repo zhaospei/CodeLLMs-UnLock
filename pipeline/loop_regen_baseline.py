@@ -11,6 +11,10 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+import dataeval.w_mbpp as mbpp
+from dataeval.w_mbpp import extract_generation_code as mbpp_eval_egc
+from func.metric import *
+
 torch.manual_seed(42)
 
 class BinaryClassifier(nn.Module):
@@ -118,37 +122,18 @@ def main(args):
         )
         print(dict_outputs.keys())
         hidden_states = dict_outputs.hidden_states
-        print(hidden_states[0][0].shape)
-        print(len(hidden_states))
-        print(len(hidden_states[0]))
-        #     generation = dict_outputs.sequences[:, input_length:].cpu()
-        #     # print(f"Generation shape: {generation.shape}")
-        #     for gen in generation:
-        #         generations.append(gen)
-            
-        #     layers_to_process = args.layers
-        #     hidden_states = dict_outputs.hidden_states
-        #     ###### hidden_states : (num_tokens, num_layers, num_seq, num_input_tokens/1, embedding_size)
-            
-        #     for layer in layers_to_process:
-        #         all_token_hidden_states_layer = {}
-        #         for ind in range(hidden_states[1][-1].shape[0]):
-        #             all_token_hidden_states_layer[ind + off_set] = []
-        #             for hidden_state in hidden_states[1:]:
-        #                 all_token_hidden_states_layer[ind + off_set].append(hidden_state[layer][ind, -1, :].detach().cpu().float().numpy())
+        input_length = input_ids.shape[1]
+        ###### hidden_states : (num_tokens, num_layers, num_seq, num_input_tokens/1, embedding_size)
+        generated_ids = dict_outputs.sequences[:, input_length:].cpu()[0]
+        gen = tokenizer.decode(generated_ids, skip_special_tokens=True)
+        clean_generation_decoded = mbpp_eval_egc({'task_id': 0}, gen, 'python')
+        start_ind, end_ind = getCleanGenerationRange(generated_ids.tolist(), clean_generation_decoded, tokenizer)
+        if start_ind is None or end_ind is None:
+            start_ind, end_ind = getGenerationRange(generated_ids.tolist(), tokenizer)
+        last_code_token_last_layer_embedding = hidden_states[end_ind - 1][-1][0, -1, :].detach().cpu().float().numpy()
 
-        #         if layer not in all_token_hidden_states_layer_list:
-        #             all_token_hidden_states_layer_list[layer] = {}
-        #         all_token_hidden_states_layer_list[layer].update(all_token_hidden_states_layer)
-        #     # return hidden_state
-                
-        # generation_config["pad_token_id"] = tokenizer.eos_token_id
-        # generated_ids = model.generate(**inputs, **generation_config)
-        # generated_ids = generated_ids[inputs["input_ids"].shape[1]:].cpu()
-        # output = tokenizer.decode(generated_ids, skip_special_tokens=True)
-        # print(output)
-
-        return output
+        return gen, last_code_token_last_layer_embedding
+    
     problem_file = os.path.join(DATASET_ROOT, f"mbpp.jsonl") 
     mbpp_re_gen_prompt_dict = read_test_examples(problem_file)
     
@@ -162,17 +147,44 @@ def main(args):
     continue_re_gen_from = args.file_path
     df = pd.read_parquet(continue_re_gen_from)
 
-
-    for _, row in df.iterrows():
-        embedding = torch.tensor(row['last_token_code_embedding']).float().to("cuda")
-        with torch.no_grad():
-            output = clf_model(embedding)
-            pred = (output > 0.5).float().item()
-            if pred == 0.0:
-                output = eval_prompt(row['task_id'], row['extracted_code'])
-                print("Regenerated code for task_id:", row['task_id'])
-                print("Generated code:", row['extracted_code'])
-                print("Regen code:", output)   
+    for loop_id in range(args.num_loops):
+        print("Loop ID:", loop_id)
+        predictions = []
+        regen_codes = []
+        embeddings = []
+        
+        for _, row in df.iterrows():
+            if loop_id == 0:
+                embedding = torch.tensor(row['last_token_code_embedding']).float().to("cuda")
+            else:
+                if row[f'predictions_{loop_id}'] == 0.0:
+                    embedding = torch.tensor(row[f'last_token_code_embedding_{loop_id}']).float().to("cuda")
+                    with torch.no_grad():
+                        output = clf_model(embedding)
+                        pred = (output > 0.5).float().item()
+                        if pred == 0.0:
+                            output, last_code_token_last_layer_embedding = eval_prompt(row['task_id'], row['extracted_code'])
+                            print("Regenerated code for task_id:", row['task_id'])
+                            print("Generated code:", row['extracted_code'])
+                            print("Regen code:", output)
+                            predictions.append(pred)
+                            regen_codes.append(output)
+                            embeddings.append(last_code_token_last_layer_embedding)
+                        else:
+                            print("No need to regenerate for task_id:", row['task_id'])
+                            predictions.append(pred)
+                            regen_codes.append("")
+                            embeddings.append(None)
+                else:
+                    print("No need to regenerate for task_id:", row['task_id'])
+                    predictions.append(1.0)
+                    regen_codes.append("")
+                    embeddings.append(None)
+        df[f"predictions_{loop_id + 1}"] = predictions
+        df[f"regen_codes_{loop_id + 1}"] = regen_codes
+        df[f"last_token_code_embedding_{loop_id + 1}"] = embeddings
+    
+    df.to_parquet(continue_re_gen_from.replace(".parquet", f"_loop_{args.num_loops}.parquet"))
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

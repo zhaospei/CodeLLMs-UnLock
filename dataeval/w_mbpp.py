@@ -194,7 +194,7 @@ def _truncate_code_at_stopwords(code, stop_words):
     return code[:min_stop_idx]
 
 
-def extract_generation_code(example, output, lang_code: str, verbose: bool=False):
+def extract_generation_code(example={'task_id': 0}, output='', lang_code: str='python', verbose: bool=False):
     task_id = example['task_id']
     # output = example.get('output', example.get("gpt_completion"))
     
