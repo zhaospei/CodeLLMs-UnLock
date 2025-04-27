@@ -105,11 +105,13 @@ def main(args):
         prompt = mbpp_re_gen_prompt_dict[task_id]
         prompt = prompt.replace("<GENERATE_CODE_PLACEHOLDER>", generated_code)
         prompt = tokenizer.apply_chat_template([{"role": "user", "content": f'{prompt}'}], tokenize=False, add_generation_prompt=True)
-        batch_inputs = tokenizer([prompt], truncation=False, padding=False)
-        input_ids = batch_inputs['input_ids'].to(device)
-        attention_masks = batch_inputs['attention_mask'].to(device)
-        dict_outputs =  model.generate(input_ids, attention_masks,
-            num_beams=1, max_new_tokens=args.max_new_tokens, 
+        batch_inputs = tokenizer([prompt], truncation=False, padding=False, return_tensors='pt').to(device)
+        input_ids = batch_inputs['input_ids']
+        # print(input_ids)
+        attention_masks = batch_inputs['attention_mask']
+        # print(attention_masks)
+        dict_outputs =  model.generate(**batch_inputs,
+            num_beams=1, max_new_tokens=512, 
             eos_token_id=tokenizer.eos_token_id,
             pad_token_id=tokenizer.eos_token_id,
             output_hidden_states = True, return_dict_in_generate=True, output_scores=True
@@ -117,6 +119,8 @@ def main(args):
         print(dict_outputs.keys())
         hidden_states = dict_outputs.hidden_states
         print(hidden_states[0][0].shape)
+        print(len(hidden_states))
+        print(len(hidden_states[0]))
         #     generation = dict_outputs.sequences[:, input_length:].cpu()
         #     # print(f"Generation shape: {generation.shape}")
         #     for gen in generation:
@@ -165,9 +169,9 @@ def main(args):
             output = clf_model(embedding)
             pred = (output > 0.5).float().item()
             if pred == 0.0:
-                output = eval_prompt(row['task_id'], row['generated_code'])
+                output = eval_prompt(row['task_id'], row['extracted_code'])
                 print("Regenerated code for task_id:", row['task_id'])
-                print("Generated code:", row['generated_code'])
+                print("Generated code:", row['extracted_code'])
                 print("Regen code:", output)   
     
 if __name__ == "__main__":
