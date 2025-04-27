@@ -99,18 +99,50 @@ def get_model_tokenize(model_name):
 def main(args):
     model, tokenizer = get_model_tokenize(args.model)
     model_name = args.model.replace("/", "-")
+    device = args.device
     def eval_prompt(task_id, generated_code):
         generation_config = {"do_sample": False, "max_new_tokens": 512, "num_beams": 1}
         prompt = mbpp_re_gen_prompt_dict[task_id]
         prompt = prompt.replace("<GENERATE_CODE_PLACEHOLDER>", generated_code)
         prompt = tokenizer.apply_chat_template([{"role": "user", "content": f'{prompt}'}], tokenize=False, add_generation_prompt=True)
-        inputs = tokenizer(prompt, truncation=False, padding=False)
+        batch_inputs = tokenizer([prompt], truncation=False, padding=False)
+        input_ids = batch_inputs['input_ids'].to(device)
+        attention_masks = batch_inputs['attention_mask'].to(device)
+        dict_outputs =  model.generate(input_ids, attention_masks,
+            num_beams=1, max_new_tokens=args.max_new_tokens, 
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.eos_token_id,
+            output_hidden_states = True, return_dict_in_generate=True, output_scores=True
+        )
+        print(dict_outputs.keys())
+        hidden_states = dict_outputs.hidden_states
+        print(hidden_states[0][0].shape)
+        #     generation = dict_outputs.sequences[:, input_length:].cpu()
+        #     # print(f"Generation shape: {generation.shape}")
+        #     for gen in generation:
+        #         generations.append(gen)
+            
+        #     layers_to_process = args.layers
+        #     hidden_states = dict_outputs.hidden_states
+        #     ###### hidden_states : (num_tokens, num_layers, num_seq, num_input_tokens/1, embedding_size)
+            
+        #     for layer in layers_to_process:
+        #         all_token_hidden_states_layer = {}
+        #         for ind in range(hidden_states[1][-1].shape[0]):
+        #             all_token_hidden_states_layer[ind + off_set] = []
+        #             for hidden_state in hidden_states[1:]:
+        #                 all_token_hidden_states_layer[ind + off_set].append(hidden_state[layer][ind, -1, :].detach().cpu().float().numpy())
 
-        generation_config["pad_token_id"] = tokenizer.eos_token_id
-        generated_ids = model.generate(**inputs, **generation_config)
-        generated_ids = generated_ids[inputs["input_ids"].shape[1]:].cpu()
-        output = tokenizer.decode(generated_ids, skip_special_tokens=True)
-        print(output)
+        #         if layer not in all_token_hidden_states_layer_list:
+        #             all_token_hidden_states_layer_list[layer] = {}
+        #         all_token_hidden_states_layer_list[layer].update(all_token_hidden_states_layer)
+        #     # return hidden_state
+                
+        # generation_config["pad_token_id"] = tokenizer.eos_token_id
+        # generated_ids = model.generate(**inputs, **generation_config)
+        # generated_ids = generated_ids[inputs["input_ids"].shape[1]:].cpu()
+        # output = tokenizer.decode(generated_ids, skip_special_tokens=True)
+        # print(output)
 
         return output
     problem_file = os.path.join(DATASET_ROOT, f"mbpp.jsonl") 
@@ -140,6 +172,8 @@ def main(args):
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument(
         "--model",
         type=str,
