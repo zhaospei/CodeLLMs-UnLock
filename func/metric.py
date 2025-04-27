@@ -221,6 +221,7 @@ def getLineGenerationTokens(tokenized_generated_text, clean_text, tokenizer, par
     fl_token = start_ind
     lines_ind = []
     current_line = offset_function_signature
+    decoded_extracted_body_text =  tokenizer.decode(tokenized_generated_text[start_ind:end_ind])
     for i in range(start_ind, end_ind):
         if '\n' in tokenizer.decode(tokenized_generated_text[i:i+1]):
             decoded_line = tokenizer.decode(tokenized_generated_text[fl_token:i + 1]).strip()
@@ -229,16 +230,15 @@ def getLineGenerationTokens(tokenized_generated_text, clean_text, tokenizer, par
                 lines_ind.append(current_line)
             fl_token = i + 1
             current_line += 1
-    try:
-        if '\n' in tokenizer.decode(tokenized_generated_text[end_ind, end_ind + 1]):
-            decoded_line = tokenizer.decode(tokenized_generated_text[fl_token:end_ind + 1]).strip()
-            if decoded_line != "" and not decoded_line.startswith('#'):
-                last_line_tokens.append(end_ind)
-                lines_ind.append(current_line)
-    except:
-        pass
-    # if end_ind > 0 and (end_ind - 1) not in last_line_tokens:
-    #     last_line_tokens.append(end_ind - 1)
+    if not decoded_extracted_body_text.endswith('\n'):
+        try:
+            if '\n' in tokenizer.decode(tokenized_generated_text[end_ind: end_ind + 1]):
+                decoded_line = tokenizer.decode(tokenized_generated_text[fl_token:end_ind + 1]).strip()
+                if decoded_line != "" and not decoded_line.startswith('#'):
+                    last_line_tokens.append(end_ind)
+                    lines_ind.append(current_line)
+        except:
+            pass
     return last_line_tokens, lines_ind
 
 def get_function_name(question: str, lang: str):

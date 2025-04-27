@@ -265,8 +265,8 @@ def process_last_line():
             gen = tokenizer.decode(generated_ids, skip_special_tokens=True)
             clean_generation_decoded = dataset_egc(example, gen, args.language)
             if function_name is None:
-                function_name = get_function_name(clean_generation_decoded, args.language)
-            last_line_token_ids, lines_ind = getLineGenerationTokens(generated_ids.tolist(), clean_generation_decoded, tokenizer, code_parser, function_name)
+                function_name_ = get_function_name(clean_generation_decoded, args.language)
+            last_line_token_ids, lines_ind = getLineGenerationTokens(generated_ids.tolist(), clean_generation_decoded, tokenizer, code_parser, function_name_)
             last_line_token_ids_list.append((last_line_token_ids, lines_ind))
 
         last_line_token_ids_list_all[task_id_path] = last_line_token_ids_list
@@ -342,6 +342,7 @@ def process_min_prob_token():
     else:
         instruction = False
     dataset = get_dataset_fn(args.dataset)(tokenizer, language=args.language, instruction=instruction)
+    
     dataset_egc = extract_generation_code_fun(args.dataset)
     # dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
     
