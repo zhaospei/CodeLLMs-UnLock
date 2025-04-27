@@ -72,3 +72,4 @@ sync.sh
 install_rclone.sh
 !data_no_ignore/*
 tmp_dir
+!REVIEW_ROUND_1/*

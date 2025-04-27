@@ -76,10 +76,10 @@ import os
 from benchmark.MBPP.human_eval.evaluation import evaluate_functional_correctness_each_sample
 
 data_root = "/drive2/tuandung/WCODELLM/benchmark/MBPP/data"
-continue_from = '/drive2/tuandung/WCODELLM/jaist/final/LFCLF_embedding_mbpp_deepseek-ai_deepseek-coder-6.7b-instruct_32.parquet'
+continue_from = '/drive2/tuandung/WCODELLM/REVIEW_ROUND_1/test_false_codellama_mbpp_re_gen-answers_final.parquet'
 kwargs_handlers = [DistributedDataParallelKwargs(find_unused_parameters=True)]
 accelerator = Accelerator(mixed_precision="bf16", kwargs_handlers=kwargs_handlers)
-model_name = 'deepseek-ai/deepseek-coder-6.7b-instruct'
+model_name = 'codellama/CodeLlama-7b-Instruct-hf'
 # tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 sequences = pd.read_parquet(continue_from).to_dict(orient='records')
 print(f'Loaded {len(sequences)} indices')
@@ -107,7 +107,8 @@ for idx in tqdm(range(0, len(sequences), batch_size)):
     runlang = language
     for sequence in sequences[idx:idx + batch_size]:
         # suffixprediction = tokenizer.decode(i, skip_special_tokens=True)
-        suffixprediction = extract_generation_code(sequence['generation'])
+        # suffixprediction = extract_generation_code(sequence['generation'])
+        suffixprediction = extract_generation_code(sequence['generated_code'])
         task_id = sequence['task_id']
         completion_id = sequence['completion_id']
         # print(completion_id)
