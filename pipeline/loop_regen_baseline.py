@@ -147,7 +147,7 @@ def main(args):
     continue_re_gen_from = args.file_path
     df = pd.read_parquet(continue_re_gen_from)
 
-    df = df.sample(n=10)
+    # df = df.sample(n=10)
     for loop_id in range(args.num_loops):
         print("Loop ID:", loop_id)
         predictions = []
@@ -188,7 +188,7 @@ def main(args):
         df[f"regen_codes_{loop_id + 1}"] = regen_codes
         df[f"last_token_code_embedding_{loop_id + 1}"] = embeddings
     
-    df.to_parquet(continue_re_gen_from.replace(".parquet", f"_loop_{args.num_loops}.parquet"))
+    df.to_parquet(continue_re_gen_from.replace(".parquet", f"_loop_{args.num_loops}_full.parquet"))
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
