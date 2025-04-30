@@ -77,6 +77,7 @@ def process_lfclf():
     dataset_egc = extract_generation_code_fun(args.dataset)
     # dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
     
+    
     output_dir = args.generate_dir.replace('temp', 'output')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -90,7 +91,7 @@ def process_lfclf():
             task_id_path = f'tensor({task_id_path})'
         task_generation_seqs_path = f'generation_sequences_output_{task_id_path}.pkl'
         task_generation_seqs_path = os.path.join(args.generate_dir, task_generation_seqs_path)
-        # print(task_generation_seqs_path)
+        print(task_generation_seqs_path)
         if not os.path.exists(task_generation_seqs_path):
             print(f'File {task_id_path} not found. Skipping...')
             continue

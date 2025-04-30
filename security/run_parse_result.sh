@@ -1,0 +1,2 @@
+python parser_result.py --bandit_res_file  bandit_result_cl.json --codeql_res_file cl70.sarif --outfile sec_files_cl.json
+python parser_result.py --bandit_res_file  bandit_result_mc.json --codeql_res_file mc70.sarif --outfile sec_files_mc.json

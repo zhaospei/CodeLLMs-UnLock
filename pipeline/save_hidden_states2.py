@@ -201,15 +201,9 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
         for layer in layers_to_process:
             layer_embeddings = all_token_hidden_states_layer_list[layer]
             layer_embeddings_dict = dict(
-                    # prompt=tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True),
                     id=batch['task_id'][0],
-                    # problem=batch['original_prompt'][0],
                     layer_embeddings = layer_embeddings,
-                    # generations=generations_decoded,
-                    # generations_ids=generations,
                 )
-            
-            # print(f'Writing {len(sequences[layer])} generations to {cache_dir}...')
             pd.to_pickle(layer_embeddings_dict, os.path.join(cache_dir, f'all_token_embedding_{task_id_path}_{layer}.pkl'))
         generation_sequences_output = dict(
                 prompt=tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True),
