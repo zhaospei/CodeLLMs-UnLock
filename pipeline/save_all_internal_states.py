@@ -213,9 +213,11 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
                 all_token_attention_layer = {}
                 
                 for ind in range(num_seq):
-                    attn = []
+                    attn = torch.zeros((num_heads, seq_len, new_token_length))
                     for i in range(new_token_length):
-                        attn.append(attentions[i][layer][ind, :, -1, :].detach().cpu().to(torch.float16))
+                        att_slice = attentions[i][layer][ind, :, -1, :].detach().cpu().to(torch.float16)
+                        actual_seq_len = att_slice.shape[1]
+                        attn[:, :actual_seq_len, i] = att_slice
                     all_token_attention_layer[ind + off_set] = attn
                 if layer not in all_token_attentions_layer_list:
                     all_token_attentions_layer_list[layer] = {}
