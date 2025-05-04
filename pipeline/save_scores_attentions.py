@@ -273,7 +273,7 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
 
                     print(new_token_length, start_code_ind, end_code_ind)
                     cc = {
-                         "att_max_on_context_max_token": att_max_on_context_max_token,
+                        "att_max_on_context_max_token": att_max_on_context_max_token,
                         "att_max_all_max_token": att_max_all_max_token,
                         "lookback_ratio_max_token": lookback_ratio_max_token,
                         "att_max_on_context_min_token": att_max_on_context_min_token,
