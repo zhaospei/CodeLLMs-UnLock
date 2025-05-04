@@ -213,9 +213,9 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
                 all_token_attention_layer = {}
                 
                 for ind in range(num_seq):
-                    attn = torch.zeros((num_heads, seq_len, new_token_length))
+                    attn = []
                     for i in range(new_token_length):
-                        attn[:, :, i] = attentions[i][layer][ind, :, -1, :].detach().cpu().to(torch.float16)
+                        attn.append(attentions[i][layer][ind, :, -1, :].detach().cpu().to(torch.float16))
                     all_token_attention_layer[ind + off_set] = attn
                 if layer not in all_token_attentions_layer_list:
                     all_token_attentions_layer_list[layer] = {}
