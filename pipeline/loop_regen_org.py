@@ -66,21 +66,13 @@ def read_test_examples(data_path: str):
 
        
         prompt_with_shots = '''
-You are a Python programming expert. I have a programming task with a description and an incorrect Python code solution. Your task is to:
-
-1. Analyze the task description to understand the requirements.
-2. Review the provided incorrect code and determine why it fails to meet the task requirements.
-3. Generate the correct Python code that fully satisfies the task requirements.
-4. Output only the corrected code in a markdown code block (python), ensuring:
-    - The code is concise, correct, and follows Python best practices (PEP 8).
-    - Include minimal comments only if necessary for clarity.
-    - The code handles typical test cases correctly.
-Task Description:
+Please refer the given examples and generate a python function for my problem.\n
+Examples are listed as follows:
 {}
-Incorrect Code:
-<GENERATE_CODE_PLACEHOLDER>
 
-'''.strip().format(prompt)
+Here is my problem:
+{}
+'''.strip().format('\n\n'.join(examples_str), prompt)
         results[ex["task_id"]] = prompt_with_shots
     return results
 
@@ -113,7 +105,6 @@ def main(args):
     def eval_prompt(task_id, generated_code):
         generation_config = {"do_sample": False, "max_new_tokens": 512, "num_beams": 1}
         prompt = mbpp_re_gen_prompt_dict[task_id]
-        prompt = prompt.replace("<GENERATE_CODE_PLACEHOLDER>", generated_code)
         prompt = tokenizer.apply_chat_template([{"role": "user", "content": f'{prompt}'}], tokenize=False, add_generation_prompt=True)
         batch_inputs = tokenizer([prompt], truncation=False, padding=False, return_tensors='pt').to(device)
         input_ids = batch_inputs['input_ids']
@@ -193,12 +184,11 @@ def main(args):
                 pbar.update(1)
                 # TODO debug
                 # break
-            
         df[f"predictions_{loop_id + 1}"] = predictions
         df[f"regen_codes_{loop_id + 1}"] = regen_codes
         df[f"last_token_code_embedding_{loop_id + 1}"] = embeddings
     
-    df.to_parquet(continue_re_gen_from.replace(".parquet", f"_loop_{args.num_loops}_base_full.parquet"))
+    df.to_parquet(continue_re_gen_from.replace(".parquet", f"_loop_{args.num_loops}_just_regen.parquet"))
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
