@@ -806,92 +806,6 @@ def process_att_token():
     return
 
 
-def process_lookback_lens():
-    tokenizer = models.load_tokenizer(args.model_name)
-    if 'chat' or 'instruct' in args.model_name.lower():
-        instruction = True
-    else:
-        instruction = False
-    dataset = get_dataset_fn(args.dataset)(tokenizer, language=args.language, instruction=instruction)
-    
-    output_dir = args.generate_dir.replace('temp', 'output')
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    results = pd.DataFrame(columns=[
-        "task_id", 
-        "completion_id",
-        "has_error",
-        "att_max_on_context_max_token",
-        "att_max_all_max_token",
-        "lookback_ratio_max_token",
-        "att_max_on_context_min_token",
-        "att_max_all_min_token",
-        "lookback_ratio_min_token",
-        "lookback_ratio_paper",
-        "hidden_states_att_max_on_context_max_token",
-        "hidden_states_att_max_all_max_token",
-        "hidden_states_lookback_ratio_max_token",
-        "hidden_states_att_max_on_context_min_token",
-        "hidden_states_att_max_all_min_token",
-        "hidden_states_lookback_ratio_min_token",
-    ])
-    found_sample = 0
-    for example in tqdm.tqdm(dataset, total=len(dataset)):
-        task_id_path =  str(example['task_id']).replace('/','_').replace('[','_').replace(']','_')
-        if args.dataset == 'mbpp' or args.dataset == 'ds1000':
-            task_id_path = f'tensor({task_id_path})'
-        
-        task_lookback_ratio_path = f'lookback_ratio_{task_id_path}.pkl'
-        task_lookback_ratio_path = os.path.join(args.generate_dir, task_lookback_ratio_path)
-        if not os.path.exists(task_lookback_ratio_path):
-            print(f'File {task_id_path} not found. Skipping...')
-            continue
-        found_sample += 1
-        with open(task_lookback_ratio_path, 'rb') as f:
-            task_lookback_ratio = pickle.load(f)
-        
-        task_generation_seqs_path = f'generation_sequences_output_{task_id_path}.pkl'
-        task_generation_seqs_path = os.path.join(args.generate_dir, task_generation_seqs_path)
-        if not os.path.exists(task_generation_seqs_path):
-            continue
-        with open(task_generation_seqs_path, 'rb') as f:
-            task_generation_seqs = pickle.load(f)
-        
-        for j in range(len(task_generation_seqs['generations_ids'])):
-            task_id = example['task_id']
-            completion_id = str(task_id) + '_' + str(j)
-            lookback_tensor = task_lookback_ratio['lookback_ratio'][j]
-            generation_ids = task_generation_seqs['generations_ids'][j]
-            eos_indices = (generation_ids == 32021).nonzero(as_tuple=True)
-            if len(eos_indices[0]) > 0:
-                eos_ind = eos_indices[0][0].item()
-            else:
-                eos_ind = lookback_tensor.shape[2]
-            num_layers, num_heads, num_new_tokens = lookback_tensor.shape
-
-            lookback_example_org = lookback_tensor
-            lookback_example = lookback_example_org.clone()
-            lookback_example = lookback_example[:, :, 1:eos_ind]
-            lookback_example = lookback_example.view(-1, lookback_example.shape[2])
-            lookback_example = lookback_example.transpose(0, 1)
-            feature_vector = lookback_example.mean(dim=0).numpy()
-            
-            results = results._append({
-                "task_id": task_id, 
-                "completion_id": completion_id,
-                "lookback_ratio_all": feature_vector.tolist(),
-                "generation": task_generation_seqs['generations'][j],
-            }, 
-            ignore_index=True)
-    
-    print(f'Found {found_sample} / {len(dataset)}')
-    model_name = args.model_name.replace('/', '_')
-    results.to_parquet(os.path.join(output_dir, f'lookback_ratio_{args.dataset}_{model_name}.parquet'))
-    
-    return
-
-
 if __name__ == '__main__':
     if args.type == 'LFCLF':
         process_lfclf()
@@ -905,7 +819,5 @@ if __name__ == '__main__':
         process_operator_token()
     elif args.type == 'att_token':
         process_att_token()
-    elif args.type == 'lookback_lens':
-        process_lookback_lens()
     else:
         raise ValueError(f"Unknown type {args.type}")
