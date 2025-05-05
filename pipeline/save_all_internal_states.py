@@ -198,7 +198,7 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
             num_layers = len(attentions[0])
             num_heads = attentions[0][0].shape[1]
             num_seq = attentions[0][0].shape[0]
-            seq_len = attentions[0][0].shape[-1]
+            seq_len = attentions[-1][0].shape[-1]
             
             for ind in range(num_seq):
                 lookback_ratio = torch.zeros((num_layers, num_heads, new_token_length))
@@ -211,13 +211,14 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
             
             for layer in layers_to_process:
                 all_token_attention_layer = {}
-                
+                # layer = layer - 1
                 for ind in range(num_seq):
                     attn = torch.zeros((num_heads, seq_len, new_token_length))
                     for i in range(new_token_length):
-                        att_slice = attentions[i][layer][ind, :, -1, :].detach().cpu().to(torch.float16)
+                        att_slice = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
                         actual_seq_len = att_slice.shape[1]
                         attn[:, :actual_seq_len, i] = att_slice
+                        # attn[:, :, i] = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
                     all_token_attention_layer[ind + off_set] = attn
                 if layer not in all_token_attentions_layer_list:
                     all_token_attentions_layer_list[layer] = {}
