@@ -821,20 +821,8 @@ def process_lookback_lens():
     results = pd.DataFrame(columns=[
         "task_id", 
         "completion_id",
-        "has_error",
-        "att_max_on_context_max_token",
-        "att_max_all_max_token",
-        "lookback_ratio_max_token",
-        "att_max_on_context_min_token",
-        "att_max_all_min_token",
-        "lookback_ratio_min_token",
-        "lookback_ratio_paper",
-        "hidden_states_att_max_on_context_max_token",
-        "hidden_states_att_max_all_max_token",
-        "hidden_states_lookback_ratio_max_token",
-        "hidden_states_att_max_on_context_min_token",
-        "hidden_states_att_max_all_min_token",
-        "hidden_states_lookback_ratio_min_token",
+        "lookback_ratio_all",
+        "generation",
     ])
     found_sample = 0
     for example in tqdm.tqdm(dataset, total=len(dataset)):
