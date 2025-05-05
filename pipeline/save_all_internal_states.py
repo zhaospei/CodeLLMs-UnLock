@@ -94,6 +94,17 @@ def get_dataset_fn(data_name):
         return dev_eval.get_dataset
     raise ValueError(f"Unknown dataset {data_name}")
 
+def move_to_cpu(obj):
+    if torch.is_tensor(obj):
+        return obj.cpu()
+    elif isinstance(obj, dict):
+        return {k: move_to_cpu(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [move_to_cpu(v) for v in obj]
+    elif isinstance(obj, tuple):
+        return tuple(move_to_cpu(v) for v in obj)
+    else:
+        return obj
 
 @torch.no_grad()
 def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_gen_once=args.max_num_gen_once, cache_dir='output'):
@@ -163,6 +174,9 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
                                 return_dict_in_generate=True, 
                             )
             print(dict_outputs.keys())
+            dict_outputs = move_to_cpu(dict_outputs)
+            print("Starting extracting...")
+            
             generation = dict_outputs.sequences[:, input_length:].cpu()
             for gen in generation:
                 generations.append(gen)

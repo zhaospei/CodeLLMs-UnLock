@@ -76,7 +76,7 @@ import os
 from benchmark.MBPP.human_eval.evaluation import evaluate_functional_correctness_each_sample
 
 data_root = "/drive2/tuandung/WCODELLM/benchmark/MBPP/data"
-continue_from = '/drive2/tuandung/WCODELLM/REVIEW_ROUND_1/lfclf_mbpp_test_codellama_7b_loop_3_full_finally_generated_code_false_prd_label.parquet'
+continue_from = '/drive2/tuandung/WCODELLM/output/lookback_lens/lookback_ratio_mbpp_deepseek-ai_deepseek-coder-6.7b-instruct.parquet'
 kwargs_handlers = [DistributedDataParallelKwargs(find_unused_parameters=True)]
 accelerator = Accelerator(mixed_precision="bf16", kwargs_handlers=kwargs_handlers)
 model_name = 'codellama/CodeLlama-7b-Instruct-hf'
@@ -108,8 +108,8 @@ for idx in tqdm(range(0, len(sequences), batch_size)):
     for sequence in sequences[idx:idx + batch_size]:
     # for sequence in sequences[9:9]:
         # suffixprediction = tokenizer.decode(i, skip_special_tokens=True)
-        # suffixprediction = extract_generation_code(sequence['generation'])
-        suffixprediction = extract_generation_code(sequence['regen_codes_1'])
+        suffixprediction = extract_generation_code(sequence['generation'])
+        # suffixprediction = extract_generation_code(sequence['regen_codes_1'])
         task_id = sequence['task_id']
         completion_id = sequence['completion_id']
         # print(completion_id)
