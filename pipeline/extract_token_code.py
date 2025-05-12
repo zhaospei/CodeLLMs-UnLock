@@ -917,13 +917,16 @@ def process_llm_check():
             task_id = example['task_id']
             completion_id = str(task_id) + '_' + str(j)
             llm_check_eig_prod = task_llm_check['llm_check_eig_prod'][j]
-            
+            llm_check_eig_prod = [v.item() for k, v in llm_check_eig_prod.items()] 
+            softmax_scores = task_llm_check['softmax_scores'][j]
+            softmax_scores = [v.item() for v in softmax_scores]
+      
             results = results._append({
                 "task_id": task_id, 
                 "completion_id": completion_id,
                 "llm_check_eig_prod": llm_check_eig_prod,
                 "generation": task_llm_check['generations'][j],
-                "softmax_scores": task_llm_check['softmax_scores'][j],
+                "softmax_scores": softmax_scores,
             }, 
             ignore_index=True)
     
