@@ -174,8 +174,9 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
                                 return_dict_in_generate=True, 
                             )
             print(dict_outputs.keys())
-            dict_outputs = move_to_cpu(dict_outputs)
-            print("Starting extracting...")
+            # dict_outputs = move_to_cpu(dict_outputs)
+            # print("Starting extracting...")
+            # print(dict_outputs.keys())
             
             generation = dict_outputs.sequences[:, input_length:].cpu()
             for gen in generation:
@@ -223,20 +224,20 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
                         lookback_ratio[l, :, i] = attn_on_context / (attn_on_context + attn_on_new_tokens)
                 lookback_ratio_list[ind + off_set] = lookback_ratio.detach().cpu().to(torch.float16)
             
-            for layer in layers_to_process:
-                all_token_attention_layer = {}
-                # layer = layer - 1
-                for ind in range(num_seq):
-                    attn = torch.zeros((num_heads, seq_len, new_token_length))
-                    for i in range(new_token_length):
-                        att_slice = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
-                        actual_seq_len = att_slice.shape[1]
-                        attn[:, :actual_seq_len, i] = att_slice
-                        # attn[:, :, i] = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
-                    all_token_attention_layer[ind + off_set] = attn
-                if layer not in all_token_attentions_layer_list:
-                    all_token_attentions_layer_list[layer] = {}
-                all_token_attentions_layer_list[layer].update(all_token_attention_layer)
+            # for layer in layers_to_process:
+            #     all_token_attention_layer = {}
+            #     # layer = layer - 1
+            #     for ind in range(num_seq):
+            #         attn = torch.zeros((num_heads, seq_len, new_token_length))
+            #         for i in range(new_token_length):
+            #             att_slice = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
+            #             actual_seq_len = att_slice.shape[1]
+            #             attn[:, :actual_seq_len, i] = att_slice
+            #             # attn[:, :, i] = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
+            #         all_token_attention_layer[ind + off_set] = attn
+            #     if layer not in all_token_attentions_layer_list:
+            #         all_token_attentions_layer_list[layer] = {}
+            #     all_token_attentions_layer_list[layer].update(all_token_attention_layer)
             
             del dict_outputs
             gc.collect()
@@ -259,12 +260,12 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
                     id=batch['task_id'][0],
                     layer_embeddings = layer_embeddings,
                 )
-            layer_attention_dict = dict(
-                    id=batch['task_id'][0],
-                    layer_attention = all_token_attentions_layer_list[layer],
-                )
+            # layer_attention_dict = dict(
+            #         id=batch['task_id'][0],
+            #         layer_attention = all_token_attentions_layer_list[layer],
+            #     )
             pd.to_pickle(layer_embeddings_dict, os.path.join(cache_dir, f'all_token_embedding_{task_id_path}_{layer}.pkl'))
-            pd.to_pickle(layer_attention_dict, os.path.join(cache_dir, f'all_token_attention_{task_id_path}_{layer}.pkl'))
+            # pd.to_pickle(layer_attention_dict, os.path.join(cache_dir, f'all_token_attention_{task_id_path}_{layer}.pkl'))
         
         lookback_ratio_output = dict(
             id=batch['task_id'][0],

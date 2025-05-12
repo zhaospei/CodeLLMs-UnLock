@@ -177,7 +177,8 @@ def process_lfclf():
                 start_ind = max(0, start_ind - 1)
                 end_ind = end_ind - 1
                 start_code_ind = max(0, start_code_ind)
-                end_code_ind = end_code_ind - 1
+                # end_code_ind = end_code_ind - 2
+                end_code_ind = min(len(layer_embedding) - 1, end_code_ind + 1)
                 
                 try:
                     first_token_embedding = layer_embedding[start_ind].tolist()
@@ -208,7 +209,7 @@ def process_lfclf():
 
         print(f'Found {found_sample} / {len(dataset)}')
         model_name = args.model_name.replace('/', '_')
-        results.to_parquet(os.path.join(output_dir, f'LFCLF_embedding_{args.dataset}_{model_name}_{layer}.parquet'))
+        results.to_parquet(os.path.join(output_dir, f'LFCLF_2_embedding_{args.dataset}_{model_name}_{layer}.parquet'))
             
     return
 

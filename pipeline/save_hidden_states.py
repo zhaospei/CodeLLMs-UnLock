@@ -13,6 +13,7 @@ import pickle
 from transformers import StoppingCriteria, StoppingCriteriaList
 from sentence_transformers import SentenceTransformer
 from torchmetrics.text.bert import BERTScore
+from datasets import Dataset
 
 import _settings
 import dataeval.w_humaneval as human_eval
@@ -36,7 +37,7 @@ parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--tensor_parallel_size', type=int, default=1)
 parser.add_argument('--fraction_of_data_to_use', type=float, default=1.0)
 parser.add_argument('--num_generations_per_prompt', type=int, default=10)
-parser.add_argument('--max_num_gen_once', type=int, default=10)
+parser.add_argument('--max_num_gen_once', type=int, default=5)
 parser.add_argument('--max_new_tokens', type=int, default=500)
 parser.add_argument('--temperature', type=float, default=1.0)
 parser.add_argument('--decoding_method', type=str, default='greedy')
@@ -110,6 +111,10 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
         stop_words = []
     if args.fraction_of_data_to_use < 1.0:
         dataset = dataset.train_test_split(test_size=(1 - args.fraction_of_data_to_use), seed=seed)['train']
+    # dataset = dataset[-9000:]
+    dataset = dataset.select(range(len(dataset) - 900, len(dataset)))
+    print(type(dataset))
+    print('len dataset', len(dataset))
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
     print('len dataset', len(dataloader))
     if old_sequences is None:
@@ -120,6 +125,7 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
     #     sequences[layer] = []
     generation_sequences_output = []
     
+    # return
     for batch_idx, batch in tqdm.tqdm(enumerate(dataloader), total=len(dataloader)):
         # print(batch.keys())
         task_id_path = str(batch['task_id'][0]).replace('/','_').replace('[','_').replace(']','_')
