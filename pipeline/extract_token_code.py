@@ -879,7 +879,6 @@ def process_lookback_lens():
     
     return
 
-
 if __name__ == '__main__':
     if args.type == 'LFCLF':
         process_lfclf()

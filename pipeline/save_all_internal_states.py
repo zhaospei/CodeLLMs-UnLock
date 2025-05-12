@@ -58,7 +58,7 @@ layer_name = '_'.join(str(x) for x in args.layers)
 if len(args.layers) > 10:
     layer_name = 'all_layers'
 
-OUTPUT_DIR = os.path.join(_settings.GENERATION_FOLDER, f'ALL_{args.model.replace("/", "_")}_{args.dataset}_{args.language}_{layer_name}')
+OUTPUT_DIR = os.path.join(_settings.GENERATION_FOLDER, f'ALL_llm_check_{args.model.replace("/", "_")}_{args.dataset}_{args.language}_{layer_name}')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 logInfo = open(os.path.join(OUTPUT_DIR, "logInfo.txt"), mode="w",encoding="utf-8")
 
@@ -157,6 +157,7 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
         all_token_hidden_states_layer_list = {}
         all_token_attentions_layer_list = {}
         lookback_ratio_list = {}
+        llm_check_eig_prod_list = {}
         off_set = 0
         while num_gens > 0:
             dict_outputs =  model.generate(input_ids, attention_mask=batch['attention_mask'].to(device),
@@ -193,16 +194,16 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
             layers_to_process = args.layers
             hidden_states = dict_outputs.hidden_states
             ###### hidden_states : (num_tokens, num_layers, [num_seq, num_input_tokens/1, embedding_size])
-            for layer in layers_to_process:
-                all_token_hidden_states_layer = {}
-                for ind in range(hidden_states[1][-1].shape[0]):
-                    all_token_hidden_states_layer[ind + off_set] = []
-                    for hidden_state in hidden_states[1:]:
-                        all_token_hidden_states_layer[ind + off_set].append(hidden_state[layer][ind, -1, :].detach().cpu().float().numpy())
+            # for layer in layers_to_process:
+            #     all_token_hidden_states_layer = {}
+            #     for ind in range(hidden_states[1][-1].shape[0]):
+            #         all_token_hidden_states_layer[ind + off_set] = []
+            #         for hidden_state in hidden_states[1:]:
+            #             all_token_hidden_states_layer[ind + off_set].append(hidden_state[layer][ind, -1, :].detach().cpu().float().numpy())
 
-                if layer not in all_token_hidden_states_layer_list:
-                    all_token_hidden_states_layer_list[layer] = {}
-                all_token_hidden_states_layer_list[layer].update(all_token_hidden_states_layer)
+            #     if layer not in all_token_hidden_states_layer_list:
+            #         all_token_hidden_states_layer_list[layer] = {}
+            #     all_token_hidden_states_layer_list[layer].update(all_token_hidden_states_layer)
                
             attentions = dict_outputs.attentions
             ###### attentions: (num_tokens, num_layers, [num_seq, num_heads, seq_len, seq_len])
@@ -215,6 +216,19 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
             seq_len = attentions[-1][0].shape[-1]
             
             for ind in range(num_seq):
+                attn_scores = {}
+                for layer_num in range(num_layers):
+                    attns = attentions[0][layer_num][ind, :, :, :].to(torch.float32).detach().cpu()
+                    print(attns.shape)
+                    eigscore = 0.0
+                    for attn_head_num in attns.shape[0]:  # iterating over number of attn heads
+                        # attns[i][layer_num][j] is of size seq_len x seq_len
+                        Sigma = attns[attn_head_num, :, :]
+                        eigscore += torch.log(torch.diagonal(Sigma, 0)).mean()
+                    attn_scores[layer_num] = eigscore
+                llm_check_eig_prod_list[ind + off_set] = attn_scores
+                
+            for ind in range(num_seq):
                 lookback_ratio = torch.zeros((num_layers, num_heads, new_token_length))
                 for i in range(new_token_length): # iterating over the new tokens length
                     for l in range(num_layers):
@@ -223,20 +237,20 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
                         lookback_ratio[l, :, i] = attn_on_context / (attn_on_context + attn_on_new_tokens)
                 lookback_ratio_list[ind + off_set] = lookback_ratio.detach().cpu().to(torch.float16)
             
-            for layer in layers_to_process:
-                all_token_attention_layer = {}
-                # layer = layer - 1
-                for ind in range(num_seq):
-                    attn = torch.zeros((num_heads, seq_len, new_token_length))
-                    for i in range(new_token_length):
-                        att_slice = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
-                        actual_seq_len = att_slice.shape[1]
-                        attn[:, :actual_seq_len, i] = att_slice
-                        # attn[:, :, i] = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
-                    all_token_attention_layer[ind + off_set] = attn
-                if layer not in all_token_attentions_layer_list:
-                    all_token_attentions_layer_list[layer] = {}
-                all_token_attentions_layer_list[layer].update(all_token_attention_layer)
+            # for layer in layers_to_process:
+            #     all_token_attention_layer = {}
+            #     # layer = layer - 1
+            #     for ind in range(num_seq):
+            #         attn = torch.zeros((num_heads, seq_len, new_token_length))
+            #         for i in range(new_token_length):
+            #             att_slice = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
+            #             actual_seq_len = att_slice.shape[1]
+            #             attn[:, :actual_seq_len, i] = att_slice
+            #             # attn[:, :, i] = attentions[i][layer - 1][ind, :, -1, :].detach().cpu().to(torch.float16)
+            #         all_token_attention_layer[ind + off_set] = attn
+            #     if layer not in all_token_attentions_layer_list:
+            #         all_token_attentions_layer_list[layer] = {}
+            #     all_token_attentions_layer_list[layer].update(all_token_attention_layer)
             
             del dict_outputs
             gc.collect()
@@ -253,35 +267,42 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
         for gen_ids in generations:
             generations_decoded.append(tokenizer.decode(gen_ids, skip_special_tokens=True))
         
-        for layer in layers_to_process:
-            layer_embeddings = all_token_hidden_states_layer_list[layer]
-            layer_embeddings_dict = dict(
-                    id=batch['task_id'][0],
-                    layer_embeddings = layer_embeddings,
-                )
-            layer_attention_dict = dict(
-                    id=batch['task_id'][0],
-                    layer_attention = all_token_attentions_layer_list[layer],
-                )
-            pd.to_pickle(layer_embeddings_dict, os.path.join(cache_dir, f'all_token_embedding_{task_id_path}_{layer}.pkl'))
-            pd.to_pickle(layer_attention_dict, os.path.join(cache_dir, f'all_token_attention_{task_id_path}_{layer}.pkl'))
+        # for layer in layers_to_process:
+        #     layer_embeddings = all_token_hidden_states_layer_list[layer]
+        #     layer_embeddings_dict = dict(
+        #             id=batch['task_id'][0],
+        #             layer_embeddings = layer_embeddings,
+        #         )
+        #     layer_attention_dict = dict(
+        #             id=batch['task_id'][0],
+        #             layer_attention = all_token_attentions_layer_list[layer],
+        #         )
+        #     pd.to_pickle(layer_embeddings_dict, os.path.join(cache_dir, f'all_token_embedding_{task_id_path}_{layer}.pkl'))
+        #     pd.to_pickle(layer_attention_dict, os.path.join(cache_dir, f'all_token_attention_{task_id_path}_{layer}.pkl'))
         
         lookback_ratio_output = dict(
             id=batch['task_id'][0],
             lookback_ratio = lookback_ratio_list,
-        )
-        
+        )    
         pd.to_pickle(lookback_ratio_output, os.path.join(cache_dir, f'lookback_ratio_{task_id_path}.pkl'))
         
-        generation_sequences_output = dict(
-                prompt=tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True),
-                id=batch['task_id'][0],
-                problem=batch['original_prompt'][0],
-                generations=generations_decoded,
-                generations_ids=generations,
-                softmax_scores=all_scores_softmax,
-            )
-        pd.to_pickle(generation_sequences_output, os.path.join(cache_dir, f'generation_sequences_output_{task_id_path}.pkl'))
+        llm_check_eig_prod_output = dict(
+            id=batch['task_id'][0],
+            llm_check_eig_prod = llm_check_eig_prod_list,
+            softmax_scores=all_scores_softmax,
+            generations = generations_decoded,
+        )
+        pd.to_pickle(llm_check_eig_prod_output, os.path.join(cache_dir, f'llm_check_eig_prod_{task_id_path}.pkl'))
+        
+        # generation_sequences_output = dict(
+        #         prompt=tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True),
+        #         id=batch['task_id'][0],
+        #         problem=batch['original_prompt'][0],
+        #         generations=generations_decoded,
+        #         generations_ids=generations,
+        #         softmax_scores=all_scores_softmax,
+        #     )
+        # pd.to_pickle(generation_sequences_output, os.path.join(cache_dir, f'generation_sequences_output_{task_id_path}.pkl'))
         
         print("Prompt:", tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True))
         print("Problem:", batch['original_prompt'][0])
