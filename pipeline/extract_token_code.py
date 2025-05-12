@@ -880,6 +880,60 @@ def process_lookback_lens():
     
     return
 
+def process_llm_check():
+    tokenizer = models.load_tokenizer(args.model_name)
+    if 'chat' or 'instruct' in args.model_name.lower():
+        instruction = True
+    else:
+        instruction = False
+    dataset = get_dataset_fn(args.dataset)(tokenizer, language=args.language, instruction=instruction)
+    
+    output_dir = args.generate_dir.replace('temp', 'output')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    results = pd.DataFrame(columns=[
+        "task_id", 
+        "completion_id",
+        "llm_check",
+        "generation",
+    ])
+    found_sample = 0
+    for example in tqdm.tqdm(dataset, total=len(dataset)):
+        task_id_path =  str(example['task_id']).replace('/','_').replace('[','_').replace(']','_')
+        if args.dataset == 'mbpp' or args.dataset == 'ds1000':
+            task_id_path = f'tensor({task_id_path})'
+        
+        task_llm_check_path = f'llm_check_eig_prod_{task_id_path}.pkl'
+        task_llm_check_path = os.path.join(args.generate_dir, task_llm_check_path)
+        if not os.path.exists(task_llm_check_path):
+            print(f'File {task_id_path} not found. Skipping...')
+            continue
+        found_sample += 1
+        with open(task_llm_check_path, 'rb') as f:
+            task_llm_check = pickle.load(f)
+        
+        for j in range(len(task_llm_check['generations'])):
+            task_id = example['task_id']
+            completion_id = str(task_id) + '_' + str(j)
+            llm_check_eig_prod = task_llm_check['llm_check_eig_prod'][j]
+            
+            results = results._append({
+                "task_id": task_id, 
+                "completion_id": completion_id,
+                "llm_check_eig_prod": llm_check_eig_prod,
+                "generation": task_llm_check['generations'][j],
+                "softmax_scores": task_llm_check['softmax_scores'][j],
+            }, 
+            ignore_index=True)
+    
+    print(f'Found {found_sample} / {len(dataset)}')
+    model_name = args.model_name.replace('/', '_')
+    results.to_parquet(os.path.join(output_dir, f'llm_check_{args.dataset}_{model_name}.parquet'))
+    
+    return
+
+
 if __name__ == '__main__':
     if args.type == 'LFCLF':
         process_lfclf()
