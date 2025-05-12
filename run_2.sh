@@ -19,4 +19,4 @@
 # 0 1 2 15 16 17 30 31 32
 # python3 -m pipeline.save_hidden_states --model deepseek-ai/deepseek-coder-6.7b-instruct --dataset human_eval --num_generations_per_prompt 10 --fraction_of_data_to_use 1 --project_ind 0 --layer 23 24 --max_new_tokens 400
 # python3 -m pipeline.save_hidden_states --model Qwen/Qwen2.5-Coder-3B-Instruct --dataset human_eval --num_generations_per_prompt 10 --fraction_of_data_to_use 1 --project_ind 0 --layer 0 1 2 17 18 19 34 35 36 --max_new_tokens 1000 --language python
-python3 -m pipeline.save_all_internal_states --model deepseek-ai/deepseek-coder-1.3b-instruct --dataset dev_eval --num_generations_per_prompt 10 --fraction_of_data_to_use 1 --project_ind 0 --layer 24 --max_new_tokens 512 --language python --max_num_gen_once 3
+python3 -m pipeline.save_all_internal_states --model deepseek-ai/deepseek-coder-6.7b-instruct --dataset mbpp --num_generations_per_prompt 10 --fraction_of_data_to_use 1 --project_ind 0 --layer 32 --max_new_tokens 256 --language python --max_num_gen_once 5
