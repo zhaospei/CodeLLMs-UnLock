@@ -949,5 +949,7 @@ if __name__ == '__main__':
         process_att_token()
     elif args.type == 'lookback_lens':
         process_lookback_lens()
+    elif args.type == 'llm_check':
+        process_llm_check()
     else:
         raise ValueError(f"Unknown type {args.type}")
