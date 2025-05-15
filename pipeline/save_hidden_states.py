@@ -112,11 +112,11 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
     if args.fraction_of_data_to_use < 1.0:
         dataset = dataset.train_test_split(test_size=(1 - args.fraction_of_data_to_use), seed=seed)['train']
     # dataset = dataset[-9000:]
-    dataset = dataset.select(range(len(dataset) - 900, len(dataset)))
-    print(type(dataset))
-    print('len dataset', len(dataset))
+    # dataset = dataset.select(range(len(dataset) - 900, len(dataset)))
+    # print(type(dataset))
+    # print('len dataset', len(dataset))
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
-    print('len dataset', len(dataloader))
+    # print('len dataset', len(dataloader))
     if old_sequences is None:
         old_sequences = []
     old_sequences = {_['task_id']: _ for _ in old_sequences}
