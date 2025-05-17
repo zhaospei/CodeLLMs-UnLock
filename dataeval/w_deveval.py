@@ -51,7 +51,9 @@ def _save_dataset(tokenizer,  max_seq_len, max_gen_len , instruction=False):
             max_context_length = max_seq_len - len(input_ids) - max_gen_len
             context_above_ids = tokenizer.encode(sample['contexts_above'])
             context_above = sample['contexts_above']
-            if len(context_above_ids) > max_context_length:
+            if max_context_length < 0:
+                context_above = ""
+            elif len(context_above_ids) > max_context_length:
                 context_above_ids = context_above_ids[-max_context_length:]
                 context_above = tokenizer.decode(context_above_ids)
             prompt = TEMPLATE.format(
