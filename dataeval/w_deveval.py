@@ -39,7 +39,7 @@ def _save_dataset(tokenizer,  max_seq_len, max_gen_len , instruction=False):
     data_path = os.path.join(DATASET_ROOT, "completion_dataset.jsonl")
     lines = load_jsonl(data_path)
     
-    with open(os.path.join(DATASET_ROOT, "codeLlama_13b_dev_eval_generated_task_id.txt"), 'r', encoding='utf8') as f:
+    with open(os.path.join(DATASET_ROOT, "codeLlama_13b_dev_eval_generated_task_ids.txt"), 'r', encoding='utf8') as f:
         generated_task_ids = f.read().split('\n')    
     # print(generated_task_ids)
     
