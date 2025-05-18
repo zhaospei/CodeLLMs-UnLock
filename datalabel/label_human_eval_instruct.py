@@ -122,7 +122,7 @@ from benchmark.HumanEval.human_eval.evaluation import evaluate_functional_correc
 
 
 data_root = "/drive2/tuandung/WCODELLM/benchmark/HumanEval/data"
-continue_from = '/drive2/tuandung/WCODELLM/output/lookback_lens/lookback_ratio_human_eval_deepseek-ai_deepseek-coder-1.3b-instruct.parquet'
+continue_from = '/drive2/tuandung/WCODELLM/REVIEW_ROUND_1/llm_check/llm_check_human_eval_deepseek-ai_deepseek-coder-1.3b-instruct.parquet'
 kwargs_handlers = [DistributedDataParallelKwargs(find_unused_parameters=True)]
 accelerator = Accelerator(mixed_precision="bf16", kwargs_handlers=kwargs_handlers)
 # model_name = 'deepseek-ai/deepseek-coder-6.7b-instruct'
