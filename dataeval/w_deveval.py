@@ -38,7 +38,11 @@ def _save_dataset(tokenizer,  max_seq_len, max_gen_len , instruction=False):
     # if not os.path.exists(save_path):
     data_path = os.path.join(DATASET_ROOT, "completion_dataset.jsonl")
     lines = load_jsonl(data_path)
-
+    
+    with open(os.path.join(DATASET_ROOT, "codeLlama_13b_dev_eval_generated_task_ids.txt"), 'r', encoding='utf8') as f:
+        generated_task_ids = f.read().split('\n')    
+    # print(generated_task_ids)
+    
     dataset = {}
     dataset["prompt"] = []
     dataset["task_id"] = []
@@ -47,6 +51,11 @@ def _save_dataset(tokenizer,  max_seq_len, max_gen_len , instruction=False):
     dataset["stopwords"] = []
     if instruction:
         for idx, sample in enumerate(lines):
+            # print(type(sample["namespace"]))
+            # print(type(generated_task_ids[0]))
+            if sample["namespace"] in generated_task_ids:
+                continue
+        
             input_ids = tokenizer.encode(sample['input_code'])
             max_context_length = max_seq_len - len(input_ids) - max_gen_len
             context_above_ids = tokenizer.encode(sample['contexts_above'])
@@ -69,6 +78,8 @@ def _save_dataset(tokenizer,  max_seq_len, max_gen_len , instruction=False):
             dataset["stopwords"].append(STOP_WORDS)
     else:
         for idx, sample in enumerate(lines):
+            if sample["namespace"] in generated_task_ids:
+                continue
             input_ids = tokenizer.encode(sample['input_code'])
             max_context_length = max_seq_len - len(input_ids) - max_gen_len
             context_above_ids = tokenizer.encode(sample['contexts_above'])
@@ -90,7 +101,7 @@ def _save_dataset(tokenizer,  max_seq_len, max_gen_len , instruction=False):
     return save_path
 
 # _save_dataset(sft=False)
-def get_dataset(tokenizer, language='python', sft=False, instruction=False, max_seq_len=1024, max_gen_len=400):
+def get_dataset(tokenizer, language='python', sft=False, instruction=False, max_seq_len=2048, max_gen_len=400):
     dataset = datasets.load_from_disk(_save_dataset(tokenizer, max_seq_len, max_gen_len, instruction))
 
     def encode_humaneval(example):
