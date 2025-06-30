@@ -22,8 +22,8 @@ model, tokenizer = FastLanguageModel.from_pretrained(
 )
 
 # Bước 2: Load adapter đã fine-tuned từ thư mục trong input kaggle
-adapter_path = "/kaggle/input/imusm123"
-model = PeftModel.from_pretrained(model, adapter_path)
+# adapter_path = "/kaggle/input/imusm123"
+# model = PeftModel.from_pretrained(model, adapter_path)
 
 # Need to set the padding token to the eos token for generation
 if tokenizer.eos_token:
@@ -40,7 +40,7 @@ prompts = [p["prompt"] for p in ds1000]
 prompts[156] = "write a hello world in python"
 
 # You can change the batch size depending on your GPU RAM
-batch_size = 2
+batch_size = 8
 # We set it to 8 since it is better for some hardware. More information here
 # https://github.com/huggingface/tokenizers/issues/991
 pad_to_multiple_of = 8
