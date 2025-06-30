@@ -27,7 +27,7 @@ import models
 import utils
 from func.metric import *
 
-passed_input_len_task = ['repo_eval', 'evocodebench', 'repoexec', 'dev_eval']
+passed_input_len_task = ['repo_eval', 'evocodebench', 'repoexec']
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, default='llama-13b-hf')
@@ -145,13 +145,15 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
             continue # generated
         else:
             print(f'Processing {task_id_path} ...')
+            # continue
         input_ids = batch['input_ids'].to(device)
         print(f"input_ids shape: {input_ids.shape}")
-        if args.dataset not in passed_input_len_task  and (input_ids.shape[-1] >1000 or input_ids.shape[-1] < 9):
+        if args.dataset not in passed_input_len_task  and (input_ids.shape[-1] > 1200 or input_ids.shape[-1] < 9):
             continue
         input_length = input_ids.shape[1]
         torch.cuda.empty_cache()
         
+        # continue
         generations = []
         generations_decoded = []
         all_scores_softmax = []
