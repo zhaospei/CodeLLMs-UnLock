@@ -54,6 +54,18 @@ formatted_prompts = [prompts[i: i + batch_size] for i in range(0, len(prompts), 
 prompts.append(ds1000[156]["prompt"])
 formatted_prompts.append([ds1000[156]["prompt"]])
 completions_per_process = []
+
+# Apply padding on the left since we are doing generation
+padding_side_default = tokenizer.padding_side
+tokenizer.padding_side = "left"
+# Tokenize each batch
+tokenized_prompts = [
+    tokenizer(formatted_prompt, return_token_type_ids=False, padding=True, pad_to_multiple_of=pad_to_multiple_of,
+              return_tensors="pt")
+    for formatted_prompt in formatted_prompts
+]
+# Put back the original padding behavior
+tokenizer.padding_side = padding_side_default
 # We automatically split the batched data we passed to it across all the processes. We also set apply_padding=True
 # so that the GPUs will have the same number of prompts, and you can then gather the results.
 # For example, if we have 2 gpus, the distribution will be:
