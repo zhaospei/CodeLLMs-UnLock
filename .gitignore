@@ -71,3 +71,9 @@ security/cl70/
 security/codeql-dbs/
 security/mc70/
 security/ds67
+security/cg70/*
+security/cl13/*
+security/ds13/*
+security/label.zip
+security/data/data.zip
+security/data/data2.zip

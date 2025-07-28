@@ -27,37 +27,52 @@ import models
 import utils
 from func.metric import *
 
-passed_input_len_task = ['repo_eval', 'evocodebench', 'repoexec', 'dev_eval']
+passed_input_len_task = ["repo_eval", "evocodebench", "repoexec", "dev_eval"]
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', type=str, default='llama-13b-hf')
-parser.add_argument('--dataset', type=str, default='human_eval')
-parser.add_argument('--device', type=str, default='cuda:0')
-parser.add_argument('--tensor_parallel_size', type=int, default=1)
-parser.add_argument('--fraction_of_data_to_use', type=float, default=1.0)
-parser.add_argument('--num_generations_per_prompt', type=int, default=10)
-parser.add_argument('--max_num_gen_once', type=int, default=10)
-parser.add_argument('--max_new_tokens', type=int, default=500)
-parser.add_argument('--temperature', type=float, default=0.5)
-parser.add_argument('--decoding_method', type=str, default='greedy')
-parser.add_argument('--top_p', type=float, default=0.99)
-parser.add_argument('--top_k', type=int, default=10)
-parser.add_argument('--seed', type=int, default=2023)
-parser.add_argument('--nprocess', type=int, default=None)
-parser.add_argument('--project_ind', type=int, default=0)
-parser.add_argument("--layers", default=-1, nargs='*', type=int,
-                        help="List of layers of the LM to save embeddings from indexed negatively from the end")
-parser.add_argument("--language", default="python", type=str,)
-parser.add_argument("--load_in_8bit", action="store_true", help="Whether to load the model in 8bit mode")
+parser.add_argument("--model", type=str, default="llama-13b-hf")
+parser.add_argument("--dataset", type=str, default="human_eval")
+parser.add_argument("--device", type=str, default="cuda:0")
+parser.add_argument("--tensor_parallel_size", type=int, default=1)
+parser.add_argument("--fraction_of_data_to_use", type=float, default=1.0)
+parser.add_argument("--num_generations_per_prompt", type=int, default=10)
+parser.add_argument("--max_num_gen_once", type=int, default=10)
+parser.add_argument("--max_new_tokens", type=int, default=500)
+parser.add_argument("--temperature", type=float, default=0.5)
+parser.add_argument("--decoding_method", type=str, default="greedy")
+parser.add_argument("--top_p", type=float, default=0.99)
+parser.add_argument("--top_k", type=int, default=10)
+parser.add_argument("--seed", type=int, default=2023)
+parser.add_argument("--nprocess", type=int, default=None)
+parser.add_argument("--project_ind", type=int, default=0)
+parser.add_argument(
+    "--layers",
+    default=-1,
+    nargs="*",
+    type=int,
+    help="List of layers of the LM to save embeddings from indexed negatively from the end",
+)
+parser.add_argument(
+    "--language",
+    default="python",
+    type=str,
+)
+parser.add_argument(
+    "--load_in_8bit", action="store_true", help="Whether to load the model in 8bit mode"
+)
 
 args = parser.parse_args()
 print(args)
-print(args.model.replace('/', '_'))
+print(args.model.replace("/", "_"))
 ml_time = int(time.time() * 1000)
-layer_name = '_'.join(str(x) for x in args.layers)
-OUTPUT_DIR = os.path.join(_settings.GENERATION_FOLDER, f'{args.model.replace("/", "_")}_{args.dataset}_{args.language}_{layer_name}')
+layer_name = "_".join(str(x) for x in args.layers)
+OUTPUT_DIR = os.path.join(
+    _settings.GENERATION_FOLDER,
+    f'{args.model.replace("/", "_")}_{args.dataset}_{args.language}_{layer_name}',
+)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-logInfo = open(os.path.join(OUTPUT_DIR, "logInfo.txt"), mode="w",encoding="utf-8")
+logInfo = open(os.path.join(OUTPUT_DIR, "logInfo.txt"), mode="w", encoding="utf-8")
+
 
 class KeywordsStoppingCriteria(StoppingCriteria):
     def __init__(self, keywords_str, tokenizer):
@@ -65,7 +80,10 @@ class KeywordsStoppingCriteria(StoppingCriteria):
         self.current_context = []
         self.tokenizer = tokenizer
         self.keywords_str = keywords_str
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+
+    def __call__(
+        self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs
+    ) -> bool:
         self.current_context.append(input_ids[0][-1].item())
         current_context = self.tokenizer.decode(self.current_context)
         for word in self.keywords_str:
@@ -73,79 +91,104 @@ class KeywordsStoppingCriteria(StoppingCriteria):
                 return True
         return False
 
+
 # _UNUSED_TOKENIZER = models.load_tokenizer()
 def get_dataset_fn(data_name):
-    if data_name == 'human_eval':
+    if data_name == "human_eval":
         return human_eval.get_dataset
-    if data_name == 'mbpp':
+    if data_name == "mbpp":
         return mbpp.get_dataset
-    if data_name == 'ds1000':
+    if data_name == "ds1000":
         return ds1000.get_dataset
-    if data_name == 'repo_eval':
+    if data_name == "repo_eval":
         return repo_eval.get_dataset
-    if data_name == 'evocodebench':
+    if data_name == "evocodebench":
         return evocodebench.get_dataset
-    if data_name == 'repoexec':
+    if data_name == "repoexec":
         return repo_exec.get_dataset
-    if data_name == 'dev_eval':
+    if data_name == "dev_eval":
         return dev_eval.get_dataset
     raise ValueError(f"Unknown dataset {data_name}")
 
 
 @torch.no_grad()
-def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_gen_once=args.max_num_gen_once,cache_dir='output'):
+def get_generations(
+    model_name: str,
+    args,
+    seed=1,
+    old_sequences=None,
+    max_num_gen_once=args.max_num_gen_once,
+    cache_dir="output",
+):
     device = args.device
-    model, tokenizer = models.load_model_and_tokenizer(model_name, args.device, args.load_in_8bit)    
+    model, tokenizer = models.load_model_and_tokenizer(
+        model_name, args.device, args.load_in_8bit
+    )
     utils.seed_everything(seed)
     print(model)
     model.eval()
-    if 'chat' or 'instruct' in model_name.lower():
+    if "chat" or "instruct" in model_name.lower():
         instruction = True
     else:
         instruction = False
-    dataset = get_dataset_fn(args.dataset)(tokenizer, language=args.language, instruction=instruction)
+    dataset = get_dataset_fn(args.dataset)(
+        tokenizer, language=args.language, instruction=instruction
+    )
 
     dataset = list()
-    with open('dataset.jsonl') as f:
+    with open("dataset.jsonl") as f:
         for l in f.readlines():
             tmp = json.loads(l.strip())
-            prompt = tmp['prompt']
+            prompt = tmp["prompt"]
             if instruction:
-                prompt = tokenizer.apply_chat_template([{"role": "user", "content": f'{prompt}'}], tokenize=False, add_generation_prompt=True)
-            inputs = tokenizer(prompt, truncation=False,return_tensors='pt', padding=False)
-            tmp['prompt'] = prompt
+                prompt = tokenizer.apply_chat_template(
+                    [{"role": "user", "content": f"{prompt}"}],
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            inputs = tokenizer(
+                prompt, truncation=False, return_tensors="pt", padding=False
+            )
+            tmp["prompt"] = prompt
             tmp.update(inputs)
-            tmp['attention_mask'] = tmp['attention_mask'][0]
-            tmp['input_ids'] = tmp['input_ids'][0]
+            tmp["attention_mask"] = tmp["attention_mask"][0]
+            tmp["input_ids"] = tmp["input_ids"][0]
             dataset.append(tmp)
     print(dataset[0])
-    dataset = sorted(dataset, key=lambda x: len(x['prompt']), reverse=True)
+    dataset = sorted(dataset, key=lambda x: len(x["prompt"]), reverse=True)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
-    print('len dataset', len(dataloader))
+    print("len dataset", len(dataloader))
     if old_sequences is None:
         old_sequences = []
-    old_sequences = {_['task_id']: _ for _ in old_sequences}
+    old_sequences = {_["task_id"]: _ for _ in old_sequences}
     sequences = {}
     # for layer in args.layers:
     #     sequences[layer] = []
     generation_sequences_output = []
-    
+
     for batch_idx, batch in tqdm.tqdm(enumerate(dataloader), total=len(dataloader)):
-        task_id_path = str(batch['task_id'][0]).replace('/','_').replace('[','_').replace(']','_')
+        task_id_path = (
+            str(batch["task_id"][0])
+            .replace("/", "_")
+            .replace("[", "_")
+            .replace("]", "_")
+        )
         out_dir_task_id = os.path.join(cache_dir, f"{task_id_path}.pkl")
-        if batch['task_id'][0] in old_sequences:
-            sequences.append(old_sequences[batch['task_id'][0]])
+        if batch["task_id"][0] in old_sequences:
+            sequences.append(old_sequences[batch["task_id"][0]])
             continue
         if os.path.exists(out_dir_task_id):
-            continue # generated
+            continue  # generated
 
-        input_ids = batch['input_ids'].to(device)
+        input_ids = batch["input_ids"].to(device)
         print(f"input_ids shape: {input_ids.shape}")
-        if args.dataset not in passed_input_len_task  and (input_ids.shape[-1] >2000 or input_ids.shape[-1] < 9):
+        if args.dataset not in passed_input_len_task and (
+            input_ids.shape[-1] > 2000 or input_ids.shape[-1] < 9
+        ):
             continue
         input_length = input_ids.shape[1]
         torch.cuda.empty_cache()
-        
+
         generations = []
         generations_decoded = []
         # print("Prompt:", tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True))
@@ -153,41 +196,57 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
         all_token_hidden_states_layer_list = {}
         off_set = 0
         while num_gens > 0:
-            dict_outputs =  model.generate(input_ids, attention_mask=batch['attention_mask'].to(device),
-                            num_beams=1, max_new_tokens=args.max_new_tokens, num_return_sequences=min(max_num_gen_once, num_gens),
-                            do_sample=True, 
-                            top_p=args.top_p, 
-                            top_k=args.top_k,
-                            temperature=args.temperature, 
-                            eos_token_id=tokenizer.eos_token_id,
-                            pad_token_id=tokenizer.eos_token_id,
-                            output_hidden_states = True, return_dict_in_generate=True, output_scores=True
-                            )
+            dict_outputs = model.generate(
+                input_ids,
+                attention_mask=batch["attention_mask"].to(device),
+                num_beams=1,
+                max_new_tokens=args.max_new_tokens,
+                num_return_sequences=min(max_num_gen_once, num_gens),
+                do_sample=True,
+                top_p=args.top_p,
+                top_k=args.top_k,
+                temperature=args.temperature,
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.eos_token_id,
+                output_hidden_states=True,
+                return_dict_in_generate=True,
+                output_scores=True,
+            )
             print(dict_outputs.keys())
             generation = dict_outputs.sequences[:, input_length:].cpu()
             # print(f"Generation shape: {generation.shape}")
             for gen in generation:
                 generations.append(gen)
-            
+
             layers_to_process = args.layers
             hidden_states = dict_outputs.hidden_states
             ###### hidden_states : (num_tokens, num_layers, num_seq, num_input_tokens/1, embedding_size)
-            
+
             for layer in layers_to_process:
                 all_token_hidden_states_layer = {}
                 for ind in range(hidden_states[1][-1].shape[0]):
                     all_token_hidden_states_layer[ind + off_set] = []
                     for hidden_state in hidden_states[1:]:
-                        all_token_hidden_states_layer[ind + off_set].append(hidden_state[layer][ind, -1, :].detach().cpu().float().numpy())
+                        all_token_hidden_states_layer[ind + off_set].append(
+                            hidden_state[layer][ind, -1, :]
+                            .detach()
+                            .cpu()
+                            .float()
+                            .numpy()
+                        )
 
                 if layer not in all_token_hidden_states_layer_list:
                     all_token_hidden_states_layer_list[layer] = {}
-                all_token_hidden_states_layer_list[layer].update(all_token_hidden_states_layer)
+                all_token_hidden_states_layer_list[layer].update(
+                    all_token_hidden_states_layer
+                )
             # return hidden_state
-            
+
             for gen_ids in generations:
-                generations_decoded.append(tokenizer.decode(gen_ids, skip_special_tokens=True))
-                
+                generations_decoded.append(
+                    tokenizer.decode(gen_ids, skip_special_tokens=True)
+                )
+
             del dict_outputs
             gc.collect()
             torch.cuda.empty_cache()
@@ -197,44 +256,60 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
             torch.cuda.empty_cache()
             num_gens -= len(generation)
             off_set += len(generation)
-            
+
         for layer in layers_to_process:
             layer_embeddings = all_token_hidden_states_layer_list[layer]
             layer_embeddings_dict = dict(
-                    id=batch['task_id'][0],
-                    layer_embeddings = layer_embeddings,
-                )
-            pd.to_pickle(layer_embeddings_dict, os.path.join(cache_dir, f'all_token_embedding_{task_id_path}_{layer}.pkl'))
-        generation_sequences_output = dict(
-                prompt=tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True),
-                id=batch['task_id'][0],
-                problem=batch['prompt'][0],
-                generations=generations_decoded,
-                generations_ids=generations,
+                id=batch["task_id"][0],
+                layer_embeddings=layer_embeddings,
             )
-        pd.to_pickle(generation_sequences_output, os.path.join(cache_dir, f'generation_sequences_output_{task_id_path}.pkl'))
-        
+            pd.to_pickle(
+                layer_embeddings_dict,
+                os.path.join(
+                    cache_dir, f"all_token_embedding_{task_id_path}_{layer}.pkl"
+                ),
+            )
+        generation_sequences_output = dict(
+            prompt=tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True),
+            id=batch["task_id"][0],
+            problem=batch["prompt"][0],
+            generations=generations_decoded,
+            generations_ids=generations,
+        )
+        pd.to_pickle(
+            generation_sequences_output,
+            os.path.join(cache_dir, f"generation_sequences_output_{task_id_path}.pkl"),
+        )
+
         print("Prompt:", tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True))
-        print("Problem:", batch['prompt'][0])
+        print("Problem:", batch["prompt"][0])
         print("MostLikelyAns:", generations_decoded[0])
-        
-        print("Prompt:", tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True), file=logInfo)
-        print("Problem:", batch['prompt'][0], file=logInfo)
+
+        print(
+            "Prompt:",
+            tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True),
+            file=logInfo,
+        )
+        print("Problem:", batch["prompt"][0], file=logInfo)
         print("MostLikelyAns:", generations_decoded[0], file=logInfo)
-        
-        print("\n","\n","\n", file=logInfo)
-        
+
+        print("\n", "\n", "\n", file=logInfo)
+
         torch.cuda.empty_cache()
-    
-    
+
     # pd.to_pickle(generation_sequences_output, os.path.join(cache_dir, f'generation_sequences_output.pkl'))
     return
 
-def main(overwrite=False, continue_from=None, parallel:int=None):
+
+def main(overwrite=False, continue_from=None, parallel: int = None):
     time_start = time.time()
     if continue_from:
         fname = os.path.basename(continue_from)
-        args.__dict__ = utils.jload(continue_from.replace(fname, 'args'+fname.replace("_partial.pkl", ".json")))
+        args.__dict__ = utils.jload(
+            continue_from.replace(
+                fname, "args" + fname.replace("_partial.pkl", ".json")
+            )
+        )
         old_sequences = pd.read_pickle(continue_from)
         cache_dir = os.path.dirname(continue_from)
         run_id = int(os.path.basename(continue_from).replace("_partial.pkl", ""))
@@ -243,21 +318,30 @@ def main(overwrite=False, continue_from=None, parallel:int=None):
         old_sequences = []
         model_name = args.model
         cache_dir = OUTPUT_DIR
-        old_results = glob.glob(os.path.join(OUTPUT_DIR, '*.pkl'))
-        old_results = [_ for _ in old_results if '_partial' not in _]
+        old_results = glob.glob(os.path.join(OUTPUT_DIR, "*.pkl"))
+        old_results = [_ for _ in old_results if "_partial" not in _]
         run_id = len(old_results)
-        with open(os.path.join(OUTPUT_DIR, f'args{run_id}.json'), 'w') as f:
+        with open(os.path.join(OUTPUT_DIR, f"args{run_id}.json"), "w") as f:
             json.dump(args.__dict__, f)
-    print(f'Generating {args.num_generations_per_prompt} generations per prompt for {model_name} on {args.dataset}...')
+    print(
+        f"Generating {args.num_generations_per_prompt} generations per prompt for {model_name} on {args.dataset}..."
+    )
     print(f"Saving to {os.path.join(cache_dir, f'{run_id}.pkl')}")
-    temp_dir = os.path.join(cache_dir,'temp2')
+    temp_dir = os.path.join(cache_dir, "temp2")
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
-    get_generations(model_name, args, seed=args.seed, old_sequences=old_sequences,cache_dir=temp_dir)
+    get_generations(
+        model_name,
+        args,
+        seed=args.seed,
+        old_sequences=old_sequences,
+        cache_dir=temp_dir,
+    )
     print("Total time: ", time.time() - time_start)
     print("Total time: ", time.time() - time_start, file=logInfo)
     return
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     task_runner = main(parallel=args.nprocess)

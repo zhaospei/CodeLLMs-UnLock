@@ -234,10 +234,14 @@ def process_lfclf():
                 start_ind = max(0, start_ind - 1)
                 end_ind = end_ind - 1
                 start_code_ind = max(0, start_code_ind)
-                end_code_ind = end_code_ind - 1
+                if start_code_ind == len(layer_embedding):
+                    start_code_ind = 0
 
+                end_code_ind = end_code_ind - 1
+                # print(len(layer_embedding), start_code_ind)
                 first_token_embedding = layer_embedding[start_ind].tolist()
                 last_token_embedding = layer_embedding[end_ind - 1].tolist()
+
                 first_token_code_embedding = layer_embedding[start_code_ind].tolist()
                 last_token_code_embedding = layer_embedding[end_code_ind - 1].tolist()
 

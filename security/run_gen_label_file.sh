@@ -1,3 +1,3 @@
-python create_dataset_output_driven.py --res_file sec_files_mc.json --source_folder /root/security/WCODELLM/security/source/LFCLF_embedding_security_ise-uiuc_Magicoder-S-DS-6.7B_1.parquet --outfile mc70.parquet
-python create_dataset_output_driven.py --res_file sec_files_ds67.json --source_folder /root/security/WCODELLM/security/source/LFCLF_embedding_security_deepseek-ai_deepseek-coder-6.7b-instruct_1.parquet --outfile ds67.parquet
-python create_dataset_output_driven.py --res_file sec_files_cl.json --source_folder /root/security/WCODELLM/security/source/LFCLF_embedding_security_codellama_CodeLlama-7b-Instruct-hf_1.parquet --outfile cl70.parquet
+python create_dataset_output_driven.py --res_file sec_files_cl13.json --source_folder /root/security/WCODELLM/security/source/LFCLF_embedding_security_codellama_CodeLlama-13b-Instruct-hf_1.parquet --outfile cl13.parquet
+python create_dataset_output_driven.py --res_file sec_files_ds13.json --source_folder /root/security/WCODELLM/security/source/LFCLF_embedding_security_deepseek-ai_deepseek-coder-1.3b-instruct_1.parquet --outfile ds13.parquet
+python create_dataset_output_driven.py --res_file sec_files_cg70.json --source_folder /root/security/WCODELLM/security/source/LFCLF_embedding_security_google_codegemma-7b-it_1.parquet --outfile cg70.parquet
