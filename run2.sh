@@ -17,7 +17,7 @@
 # python3 -m pipeline.extract_token_code2 --model $MODEL --dataset security --layers 0 1 4 8 12 16 20 24 --generate_dir $OUT_DIR --type LFCLF
 
 
-export HF_TOKEN=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
+export HF_TOKExN=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2
 MODEL="google/codegemma-7b-it"
 # python3 -m pipeline.save_hidden_states2 --model $MODEL --dataset human_eval --num_generations_per_prompt 10  --project_ind 0 --layer 0 1 4 8 12 16 20 24 28 --max_new_tokens 512 --language python --max_num_gen_once 5
 
