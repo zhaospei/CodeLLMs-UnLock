@@ -119,6 +119,8 @@ def check_correctness(
             "passed": result[0] == "passed",
             "finish": -1 if "finish" not in sample else sample["finish"],
             "code": sample["test_code"],
+            "memory": -1,
+            "execution_time": -1,
         }
 
 # Copyright (c) OpenAI (https://openai.com)

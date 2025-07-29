@@ -72,3 +72,12 @@ sync.sh
 install_rclone.sh
 !data_no_ignore/*
 tmp_dir
+openai/batch/*.jsonl
+openai/*/*.jsonl
+outputs/*.csv
+loop_gen/
+data/*.json
+anhSon
+kaggle.json
+openai/.key
+openai/*.zip

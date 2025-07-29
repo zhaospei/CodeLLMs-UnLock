@@ -18,13 +18,35 @@ from dataeval.w_repoeval import extract_generation_code as repoeval_eval_egc
 from dataeval.w_deveval import extract_generation_code as deveval_eval_egc
 
 
-PROMPT_TEMPLATE = """
-Evaluate the following code outputs. For each coding problem, you will be given an LLM-generated code output. You must determine if the LLM-generated code output is correct or not. If the LLM-generated code output is correct, write '1'; if it is not correct, write '0'.
+PROMPT_TEMPLATE_FUNC = """
+Evaluate the following code outputs. 
+For each coding problem, you will be given an LLM-generated code output. 
+You must determine if the LLM-generated code output is correct or not. 
+If the LLM-generated code output is correct, write '1'; if it is not correct, write '0'.
 Problem: %s
 LLM Output: %s
 Correctness:
 """
 
+PROMPT_TEMPLATE_COMPILE = """
+Evaluate the following code outputs. 
+For each coding problem, you will be given an LLM-generated code output. 
+You must determine if the LLM-generated code output is compilable or not. 
+If the LLM-generated code output is compilable, write '1'; if it is not compilable, write '0'.
+Problem: %s
+LLM Output: %s
+Correctness:
+"""
+
+PROMPT_TEMPLATE_SECURITY = """
+Evaluate the following code outputs. 
+For each coding problem, you will be given an LLM-generated code output. 
+You must determine if the LLM-generated code output is insecure or not. 
+If the LLM-generated code output is insecure, write '1'; if it is secure, write '0'.
+Problem: %s
+LLM Output: %s
+Correctness:
+"""
 
 
 def get_dataset_fn(data_name):
@@ -37,6 +59,9 @@ def get_dataset_fn(data_name):
     if data_name == 'repo_eval':
         return repo_eval.get_dataset
     if data_name == 'dev_eval':
+        return dev_eval.get_dataset
+    if data_name = 'security':
+        # change to security
         return dev_eval.get_dataset
 
 def get_prompt_dataset(dataset):

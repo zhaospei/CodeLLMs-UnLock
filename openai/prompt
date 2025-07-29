@@ -1,5 +1,4 @@
-Evaluate the following code outputs. For each coding problem, you will be given an LLM-generated code output and the correct output. You must determine if the LLM-generated code output is correct or not. If the LLM-generated code output is correct, write '1'; if it is not correct, write '0'.
+Evaluate the following code outputs. For each coding problem, you will be given an LLM-generated code output. You must determine if the LLM-generated code output is correct or not. If the LLM-generated code output is correct, write '1'; if it is not correct, write '0'.
 Problem: {}
-Ground Truth: {}
 LLM Output: {}
 Correctness:

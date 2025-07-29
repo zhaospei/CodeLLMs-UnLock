@@ -20,10 +20,15 @@ def run(args):
         file_name = str(Path(file).name)
         if file_name.startswith('output'):
             continue
-        print(f'process: {file}')
+        
+        if 'mini_batch' not in file_name:
+            continue
+        # print(f'process: {file}')
         output_file = os.path.join(args.output_dir,'output_'+str(Path(file).name))
         if os.path.exists(output_file):
             continue
+        print('process file:',file)
+        # continue
         file_openai = client.files.create(
             file=Path(file),
             purpose="batch",

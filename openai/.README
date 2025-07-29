@@ -1,0 +1,6 @@
+#1 create batch file 
+#2 split batch (due to limit of chatgpt: 200.000 token on batch)
+#3 run batch
+#4 parse result
+#5 compare metrics
+
