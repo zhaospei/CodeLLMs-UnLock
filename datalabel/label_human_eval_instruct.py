@@ -121,21 +121,21 @@ import os
 from benchmark.HumanEval.human_eval.evaluation import evaluate_functional_correctness_each_sample, evaluate_functional_correctness
 
 
-data_root = "/drive2/tuandung/WCODELLM/benchmark/HumanEval/data"
-continue_from = '/drive2/tuandung/WCODELLM/REVIEW_ROUND_1/llm_check/llm_check_human_eval_deepseek-ai_deepseek-coder-1.3b-instruct.parquet'
+data_root = "/workspace/CodeLLMs-UnLock/benchmark/HumanEval/data"
+continue_from = '/workspace/CodeLLMs-UnLock/output/LFCLF_2_embedding_human_eval_codellama_CodeLlama-13b-Instruct-hf_40_label.parquet'
 kwargs_handlers = [DistributedDataParallelKwargs(find_unused_parameters=True)]
 accelerator = Accelerator(mixed_precision="bf16", kwargs_handlers=kwargs_handlers)
 # model_name = 'deepseek-ai/deepseek-coder-6.7b-instruct'
 # model_name = 'Qwen/Qwen2.5-Coder-3B-Instruct'
 # model_name = 'codellama/CodeLlama-7b-Instruct-hf'
-model_name = 'ise-uiuc/Magicoder-S-DS-6.7B'
+model_name = 'codellama/CodeLlama-13b-Instruct-hf'
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 problem_file = os.path.join(data_root, f"humaneval-python.jsonl")
 # sequences = pd.read_pickle(continue_from)
 sequences = pd.read_parquet(continue_from).to_dict(orient='records')
 examples = [json.loads(x) for x in open(problem_file) if x.strip()]
 print(f'Loaded {len(sequences)} indices')
-batch_size = 8
+batch_size = 16
 language = 'python'
 log_dir = 'tmp/humaneval'
 if not os.path.exists(log_dir):
@@ -145,8 +145,11 @@ test_run_results = []
 totalnum = len(sequences)
 # totalnum = 164 * 10
 totalpass = 0
+total_compliable = 0
 currentnum = 0
 total_samples = []
+test_run_results_compliable = []
+test_run_output_error = []
 cleaned_output_results = []
 for idx in tqdm(range(0, len(sequences), batch_size)):
     log_file = os.path.join(log_dir,
@@ -179,17 +182,20 @@ for idx in tqdm(range(0, len(sequences), batch_size)):
         tmpfile.write(json.dumps(res) + "\n")
         tmpfile.flush()
         currentnum += 1
-    results = evaluate_functional_correctness_each_sample(input_file=log_file, problem_file=os.path.join(data_root, f"humaneval-{language}.jsonl"), tmp_dir=log_dir, timeout=timeout, language=runlang, n_workers=8)
+    results = evaluate_functional_correctness_each_sample(input_file=log_file, problem_file=os.path.join(data_root, f"humaneval-{language}.jsonl"), tmp_dir=log_dir, timeout=timeout, language=runlang, n_workers=16)
     # results = evaluate_functional_correctness_each_sample(input_file=log_file, problem_file=os.path.join(data_root, f"humaneval-{language}.jsonl"), tmp_dir=log_dir, timeout=timeout, language=runlang, n_workers=8)
-    
-    
+
     # print("Prompt", batch_lines[0]['prompt'])
     for line in batch_lines:
         cleaned_output_results.append(line['generation'])
         test_run_results.append(results[line['completion_id']][0][1]['passed'])
+        test_run_results_compliable.append(results[line['completion_id']][0][1]['compliable'])
+        test_run_output_error.append(results[line['completion_id']][0][1]['result'])
         if results[line['completion_id']][0][1]['passed']:
             totalpass += 1
-    print(f"Total pass: {totalpass}, Current num: {currentnum}")
+        if results[line['completion_id']][0][1]['compliable']:
+            total_compliable += 1
+    print(f"Total pass: {totalpass}, Total compliable: {total_compliable}, Current num: {currentnum}")
     # currentnum += len(batch_lines)
     tmpfile.close()
     for line in batch_lines:
@@ -198,6 +204,7 @@ for idx in tqdm(range(0, len(sequences), batch_size)):
 results = pd.DataFrame(sequences)
 results['label'] = test_run_results
 results['cleaned_code'] = cleaned_output_results
-print(totalpass)
-print(totalnum)
-results.to_parquet(continue_from.replace(".parquet", "_label.parquet"))
+results['compliable_label'] = test_run_results_compliable
+results['output_error'] = test_run_output_error
+print(f"Total pass: {totalpass}, Total compliable: {total_compliable}, Current num: {currentnum}")
+results.to_parquet(continue_from.replace(".parquet", "_compliable_label_output_error.parquet"))

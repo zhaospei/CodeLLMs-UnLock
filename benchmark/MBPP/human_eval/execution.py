@@ -75,7 +75,7 @@ def check_correctness(
                 except TimeoutException:
                     result.append("timed out")
                 except AssertionError as e:
-                    result.append(f"failed: AssertionError")
+                    result.append(f"assertion error")
                 except BaseException as e:
                     result.append(f"failed: {e}")
                 end_time = time.time()
@@ -106,6 +106,7 @@ def check_correctness(
             "completion_id": completion_id,
             "result": result[0],
             "passed": result[0] == "passed",
+            "compliable": not result[0].startswith("failed:"),
             "finish": -1 if "finish" not in sample else sample["finish"],
             "code": sample["test_code"],
             "memory": result[-1][-1] / 10**6,
@@ -117,6 +118,7 @@ def check_correctness(
             "completion_id": completion_id,
             "result": result[0],
             "passed": result[0] == "passed",
+            "compliable": not result[0].startswith("failed:"),
             "finish": -1 if "finish" not in sample else sample["finish"],
             "code": sample["test_code"],
         }
