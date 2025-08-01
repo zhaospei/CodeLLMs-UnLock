@@ -1,3 +1,4 @@
+sh run_create_folder_file.sh
 # create folder file
 sh run_bandit.sh
 # run bandit

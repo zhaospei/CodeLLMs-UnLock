@@ -13,5 +13,6 @@ FOLDER="LFCLF_embedding_security_deepseek-ai_deepseek-coder-1.3b-instruct_1.parq
 DBNAME="cg70"
 OUT="cg70.sarif"
 FOLDER="LFCLF_embedding_security_google_codegemma-7b-it_1.parquet"
+/root/QALLMCODE/WCODELLM/codeql/codeql/codeql database remove cg70  --language=python --source-root=source/${FOLDER}
 /root/QALLMCODE/WCODELLM/codeql/codeql/codeql database create $DBNAME  --language=python --source-root=source/${FOLDER}
 /root/QALLMCODE/WCODELLM/codeql/codeql/codeql database analyze $DBNAME  --format=sarif-latest --output=$OUT
