@@ -1,0 +1,3 @@
+python3 -m pipeline.save_hidden_states --model openai/gpt-oss-20b --dataset human_eval --num_generations_per_prompt 10  --project_ind 0 --layer 0 1 4 8 12 16 20 24 --max_new_tokens 512 --language python --max_num_gen_once 10
+python3 -m pipeline.save_hidden_states --model openai/gpt-oss-20b --dataset mbpp --num_generations_per_prompt 10  --project_ind 0 --layer 0 1 4 8 12 16 20 24 --max_new_tokens 512 --language python --max_num_gen_once 10
+python3 -m pipeline.save_hidden_states2 --model openai/gpt-oss-20b --dataset mbpp --num_generations_per_prompt 10  --project_ind 0 --layer 0 1 4 8 12 16 20 24 --max_new_tokens 512 --language python --max_num_gen_once 10
