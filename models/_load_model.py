@@ -16,9 +16,9 @@ def _load_pretrained_model(model_name, device, load_in_8bit, torch_dtype=torch.f
     kwargs_handlers = [DistributedDataParallelKwargs(find_unused_parameters=True)]
     accelerator = Accelerator(mixed_precision="bf16", kwargs_handlers=kwargs_handlers)  
     if load_in_8bit:
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map='auto', load_in_8bit=True, torch_dtype=torch.bfloat16)
+        model = AutoModelForCausalLM.from_pretrained(model_name, device_map='auto', load_in_8bit=True, dtype=torch.bfloat16)
     else:
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map='auto', torch_dtype=torch.bfloat16)
+        model = AutoModelForCausalLM.from_pretrained(model_name, device_map='auto', dtype=torch.bfloat16)
     # model.to(device)
     return model
 
