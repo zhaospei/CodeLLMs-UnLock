@@ -110,9 +110,11 @@ def process_lfclf():
                 # print("gen:", gen)
                 # print("clean_generation_decoded:", clean_generation_decoded)
                 print(f'Cannot find clean generation range for {task_id_path}')
-                clean_generations_range.append((getGenerationRange(generated_ids.tolist(), tokenizer), has_error))
+                start_ind, end_ind = getGenerationRange(generated_ids.tolist(), tokenizer)
+                clean_generations_range.append((start_ind, end_ind, has_error))
             else:
                 clean_generations_range.append((start_ind, end_ind, has_error))
+
 
         clean_generations_range_all[task_id_path] = clean_generations_range
     # print(clean_generations_range_all)
