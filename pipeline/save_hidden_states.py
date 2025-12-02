@@ -139,6 +139,7 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
     # dataset = dataset.select(range(len(dataset) - 900, len(dataset)))
     # print(type(dataset))
     # print('len dataset', len(dataset))
+    dataset = dataset.filter(lambda x: x['task_id'] in part_task_id_list)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
     # print('len dataset', len(dataloader))
     if old_sequences is None:
