@@ -50,13 +50,33 @@ parser.add_argument("--layers", default=-1, nargs='*', type=int,
                         help="List of layers of the LM to save embeddings from indexed negatively from the end")
 parser.add_argument("--language", default="python", type=str,)
 parser.add_argument("--load_in_8bit", action="store_true", help="Whether to load the model in 8bit mode")
+parser.add_argument("--part_id", type=int, default=0)
+parser.add_argument("--num_parts", type=int, default=1)
+
+def get_list_part(lst, num_parts, part_id):
+    """
+    Chia lst thành num_parts phần gần bằng nhau và trả về phần có chỉ số part_id (0-based index).
+    """
+    if part_id < 0 or part_id >= num_parts:
+        raise ValueError("part_id phải nằm trong khoảng từ 0 đến num_parts-1")
+    
+    n = len(lst)
+    # Tính kích thước cơ bản của mỗi phần và phần thừa
+    base_size = n // num_parts
+    remainder = n % num_parts
+    
+    # Xác định start và end index
+    start = part_id * base_size + min(part_id, remainder)
+    end = start + base_size + (1 if part_id < remainder else 0)
+    
+    return lst[start:end]
 
 args = parser.parse_args()
 print(args)
 print(args.model.replace('/', '_'))
 ml_time = int(time.time() * 1000)
 layer_name = '_'.join(str(x) for x in args.layers)
-OUTPUT_DIR = os.path.join(_settings.GENERATION_FOLDER, f'{args.model.replace("/", "_")}_{args.dataset}_{args.language}_{layer_name}')
+OUTPUT_DIR = os.path.join(_settings.GENERATION_FOLDER, f'{args.model.replace("/", "_")}_{args.dataset}_{args.language}_{layer_name}_part_{args.part_id}')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 logInfo = open(os.path.join(OUTPUT_DIR, "logInfo.txt"), mode="w",encoding="utf-8")
 
@@ -100,7 +120,7 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
     utils.seed_everything(seed)
     print(model)
     model.eval()
-    if 'chat' or 'instruct' in model_name.lower():
+    if 'chat' or 'instruct' or 'gpt' in model_name.lower():
         instruction = True
     else:
         instruction = False
@@ -111,6 +131,10 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
         stop_words = []
     if args.fraction_of_data_to_use < 1.0:
         dataset = dataset.train_test_split(test_size=(1 - args.fraction_of_data_to_use), seed=seed)['train']
+    
+    task_id_list = list(dataset["task_id"])
+    part_task_id_list = get_list_part(task_id_list, args.num_parts, args.part_id)
+    print(len(part_task_id_list))
     # dataset = dataset[-9000:]
     # dataset = dataset.select(range(len(dataset) - 900, len(dataset)))
     # print(type(dataset))
@@ -130,6 +154,8 @@ def get_generations(model_name:str, args, seed=1, old_sequences=None, max_num_ge
         # print(batch.keys())
         task_id_path = str(batch['task_id'][0]).replace('/','_').replace('[','_').replace(']','_')
         out_dir_task_id = os.path.join(cache_dir, f"{task_id_path}.pkl")
+        if batch['task_id'][0] not in part_task_id_list:
+            continue
         if batch['task_id'][0] in old_sequences:
             sequences.append(old_sequences[batch['task_id'][0]])
             continue

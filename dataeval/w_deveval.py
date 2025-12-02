@@ -104,10 +104,34 @@ def _save_dataset(tokenizer,  max_seq_len, max_gen_len , instruction=False):
 def get_dataset(tokenizer, language='python', sft=False, instruction=False, max_seq_len=2048, max_gen_len=400):
     dataset = datasets.load_from_disk(_save_dataset(tokenizer, max_seq_len, max_gen_len, instruction))
 
+    print(tokenizer.name_or_path)
+    print("instruction", instruction)
     def encode_humaneval(example):
         prompt = example['prompt']
         if instruction:
-            prompt = tokenizer.apply_chat_template([{"role": "user", "content": f'{prompt}'}], tokenize=False, add_generation_prompt=True)
+            if 'gpt' in tokenizer.name_or_path:
+                system_prompt = """You are a code-completion assistant specialized in generating Python code.
+Rules:
+1. Always respond with Python code blocks only.
+2. All code must be enclosed inside triple-backtick fences using ```python.
+3. Do NOT include explanations outside code blocks.
+4. Do NOT generate any text outside the code block unless explicitly asked.
+5. When completing or modifying code, output only the final Python code.
+6. Maintain correct indentation, runnable syntax, and minimal placeholders.
+"""
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ]
+                
+                prompt = tokenizer.apply_chat_template(
+                    messages,
+                    reasoning_effort='low',
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            else:
+                prompt = tokenizer.apply_chat_template([{"role": "user", "content": f'{prompt}'}], tokenize=False, add_generation_prompt=True)
         inputs = tokenizer(prompt, truncation=False, padding=False)
         return inputs
 
